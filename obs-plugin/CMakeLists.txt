@@ -17,6 +17,10 @@ add_library(t0g-stream-control MODULE
   src/t0g-settings.hpp
   src/aitum-vertical.cpp
   src/aitum-vertical.hpp
+  src/manual-rtmp-output.cpp
+  src/manual-rtmp-output.hpp
+  src/credential-store.cpp
+  src/credential-store.hpp
   src/tiktok-service.cpp
   src/tiktok-service.hpp
   src/tiktok-output.cpp
@@ -29,6 +33,7 @@ target_link_libraries(t0g-stream-control PRIVATE
   Qt6::Core
   Qt6::Widgets
   Qt6::Network
+  $<$<PLATFORM_ID:Windows>:advapi32>
 )
 
 set_target_properties(t0g-stream-control PROPERTIES PREFIX "")
