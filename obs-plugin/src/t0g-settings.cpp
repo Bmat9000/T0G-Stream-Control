@@ -4,8 +4,6 @@
 #include <QCheckBox>
 #include <QApplication>
 #include <QClipboard>
-#include <QApplication>
-#include <QClipboard>
 #include <QComboBox>
 #include <QDialogButtonBox>
 #include <QFormLayout>
@@ -226,27 +224,6 @@ void T0GSettingsDialog::toggleSecret(QLineEdit *field, QPushButton *button)
 {
     if (!field || !button)
         return;
-    const bool hidden = field->echoMode() == QLineEdit::Password;
-    field->setEchoMode(hidden ? QLineEdit::Normal : QLineEdit::Password);
-    button->setText(hidden ? "Hide" : "Show");
-}
-
-void T0GSettingsDialog::refreshLiveCredentials()
-{
-    QSettings s("T0G", "T0G Stream Control Session");
-    liveTikTokServer->setText(s.value("tiktok/server").toString());
-    liveTikTokKey->setText(s.value("tiktok/key").toString());
-}
-
-void T0GSettingsDialog::copyField(QLineEdit *field)
-{
-    if (field && !field->text().isEmpty())
-        QApplication::clipboard()->setText(field->text());
-}
-
-void T0GSettingsDialog::toggleSecret(QLineEdit *field, QPushButton *button)
-{
-    if (!field || !button) return;
     const bool hidden = field->echoMode() == QLineEdit::Password;
     field->setEchoMode(hidden ? QLineEdit::Normal : QLineEdit::Password);
     button->setText(hidden ? "Hide" : "Show");
