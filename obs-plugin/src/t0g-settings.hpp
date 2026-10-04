@@ -1,9 +1,11 @@
 #pragma once
 #include <QDialog>
+#include <QString>
 
 class QCheckBox;
 class QComboBox;
 class QLineEdit;
+class QPushButton;
 
 struct T0GSettings {
     bool autoLoadTikTok = true;
@@ -18,6 +20,11 @@ struct T0GSettings {
     QString defaultGame;
     int defaultAudience = 0;
 
+    int twitchConnectionMode = 0; // 0 = OBS/account, 1 = manual RTMP
+    QString twitchManualServer;
+    int tiktokConnectionMode = 0; // 0 = Streamlabs automatic, 1 = manual RTMP
+    QString tiktokManualServer;
+
     static T0GSettings load();
     void save() const;
 };
@@ -28,6 +35,11 @@ public:
     T0GSettings settings() const;
 
 private:
+    void updateAccountFields();
+    void saveSecrets();
+    void clearTwitchKey();
+    void clearTikTokKey();
+
     QCheckBox *autoLoadTikTok{};
     QCheckBox *rememberStreamInfo{};
     QCheckBox *confirmBeforeEnd{};
@@ -39,4 +51,13 @@ private:
     QLineEdit *defaultTitle{};
     QLineEdit *defaultGame{};
     QComboBox *defaultAudience{};
+
+    QComboBox *twitchMode{};
+    QLineEdit *twitchServer{};
+    QLineEdit *twitchKey{};
+    QPushButton *clearTwitch{};
+    QComboBox *tiktokMode{};
+    QLineEdit *tiktokServer{};
+    QLineEdit *tiktokKey{};
+    QPushButton *clearTikTok{};
 };
