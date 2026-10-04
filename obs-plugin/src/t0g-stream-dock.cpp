@@ -59,6 +59,12 @@ T0GStreamDock::T0GStreamDock(QWidget *parent) : QDockWidget("T0G Stream Control"
     tiktokEnabled = new QCheckBox("TikTok (secondary RTMP output)", platforms);
     tiktokEnabled->setChecked(true);
     tiktokStatus = new QLabel("TikTok: Not connected", platforms);
+    auto *verticalStatus = new QLabel("Vertical: checking Aitum...", platforms);
+    QTimer::singleShot(1000, verticalStatus, [this, verticalStatus] {
+        verticalStatus->setText(aitumVertical.available()
+            ? "Vertical: Aitum detected - TikTok will use the vertical canvas"
+            : "Vertical: Aitum not detected - TikTok will use OBS fallback output");
+    });
 
     loadTikTokButton = new QPushButton("LOAD TIKTOK FROM STREAMLABS", platforms);
     loadTikTokButton->setToolTip("Loads your existing Streamlabs TikTok session locally. The token is not saved by T0G.");
@@ -68,6 +74,7 @@ T0GStreamDock::T0GStreamDock(QWidget *parent) : QDockWidget("T0G Stream Control"
     platformLayout->addSpacing(6);
     platformLayout->addWidget(tiktokEnabled);
     platformLayout->addWidget(tiktokStatus);
+    platformLayout->addWidget(verticalStatus);
     platformLayout->addWidget(loadTikTokButton);
     layout->addWidget(platforms);
 
@@ -247,9 +254,31 @@ void T0GStreamDock::startTikTok()
                     }
 
                     activeTikTokStreamId = result.streamId;
-                    setTikTokStatus("Configuring OBS output...");
-
                     QString outputError;
+                    usingAitumVertical = settings.preferVertical && aitumVertical.available();
+
+                    if (usingAitumVertical) {
+                        setTikTokStatus("Configuring Aitum Vertical...");
+                        if (!aitumVertical.configureTikTok(result.server, result.key, &outputError) ||
+                            !aitumVertical.startTikTok(&outputError)) {
+                            setTikTokStatus("Aitum Vertical failed");
+                            tiktok.endLive(activeTikTokStreamId, [](bool, QString) {});
+                            activeTikTokStreamId.clear();
+                            usingAitumVertical = false;
+                            setBusy(false);
+                            QMessageBox::critical(this, "TikTok Vertical Output", outputError);
+                            return;
+                        }
+
+                        setTikTokStatus("LIVE - Aitum Vertical");
+                        if (twitchEnabled->isChecked())
+                            setTwitchStatus(obs_frontend_streaming_active() ? "LIVE" : "Starting...");
+                        setBusy(false);
+                        endLiveButton->setEnabled(true);
+                        return;
+                    }
+
+                    setTikTokStatus("Configuring OBS fallback output...");
                     if (!tiktokOutput.configure(result.server, result.key, &outputError)) {
                         setTikTokStatus("Output setup failed");
                         tiktok.endLive(activeTikTokStreamId, [](bool, QString) {});
@@ -298,8 +327,15 @@ void T0GStreamDock::stopSelectedPlatforms()
         obs_frontend_streaming_stop();
     }
 
-    if (tiktokEnabled->isChecked() && settings.stopTikTok)
-        tiktokOutput.stop();
+    if (tiktokEnabled->isChecked() && settings.stopTikTok) {
+        if (usingAitumVertical) {
+            QString ignored;
+            aitumVertical.stopTikTok(&ignored);
+            usingAitumVertical = false;
+        } else {
+            tiktokOutput.stop();
+        }
+    }
 
     if (!settings.stopTikTok || !tiktokEnabled->isChecked() || activeTikTokStreamId.isEmpty()) {
         setTikTokStatus(tiktok.hasToken() ? "Connected" : "Not connected");
