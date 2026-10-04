@@ -29,6 +29,14 @@ target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE
 
 target_sources(${CMAKE_PROJECT_NAME} PRIVATE
   src/plugin-main.cpp
+  src/twitch-service.cpp
+  src/twitch-service.hpp
+  src/preflight-check.cpp
+  src/preflight-check.hpp
+  src/stream-preset.cpp
+  src/stream-preset.hpp
+  src/session-state.cpp
+  src/session-state.hpp
   src/t0g-stream-dock.cpp
   src/t0g-stream-dock.hpp
   src/t0g-settings.cpp
