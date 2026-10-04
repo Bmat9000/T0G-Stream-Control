@@ -39,6 +39,9 @@ private:
     void saveSecrets();
     void clearTwitchKey();
     void clearTikTokKey();
+    void refreshLiveCredentials();
+    void copyField(QLineEdit *field);
+    void toggleSecret(QLineEdit *field, QPushButton *button);
 
     QCheckBox *autoLoadTikTok{};
     QCheckBox *rememberStreamInfo{};
@@ -60,4 +63,8 @@ private:
     QLineEdit *tiktokServer{};
     QLineEdit *tiktokKey{};
     QPushButton *clearTikTok{};
+
+    QLineEdit *liveTikTokServer{};
+    QLineEdit *liveTikTokKey{};
+    QPushButton *showLiveTikTokKey{};
 };
