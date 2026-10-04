@@ -167,6 +167,25 @@ void T0GStreamDock::openSettings()
         loadTikTokToken(true);
 }
 
+void T0GStreamDock::showTikTokFallbackFailure(const QString &detail)
+{
+    QMessageBox box(QMessageBox::Critical,
+                    "TikTok Output Setup Failed",
+                    "T0G created your TikTok LIVE and retrieved the stream credentials, "
+                    "but automatic output setup failed.\n\n"
+                    "Your RTMP server and stream key are still available.\n\n"
+                    "Go to Settings > Current Stream Credentials / Fallback to copy them into "
+                    "OBS, Aitum, Streamlabs, or another streaming program.\n\n"
+                    "Error: " + detail,
+                    QMessageBox::NoButton, this);
+    auto *open = box.addButton("Open Settings", QMessageBox::AcceptRole);
+    box.addButton("Close", QMessageBox::RejectRole);
+    box.exec();
+
+    if (box.clickedButton() == open)
+        openSettings();
+}
+
 void T0GStreamDock::loadSavedStreamInfo()
 {
     QSettings s("T0G", "T0G Stream Control");
@@ -335,12 +354,11 @@ void T0GStreamDock::startTikTok()
                         setTikTokStatus("Configuring Aitum Vertical...");
                         if (!aitumVertical.configureTikTok(result.server, result.key, &outputError) ||
                             !aitumVertical.startTikTok(&outputError)) {
-                            setTikTokStatus("Aitum Vertical failed");
-                            tiktok.endLive(activeTikTokStreamId, [](bool, QString) {});
-                            activeTikTokStreamId.clear();
+                            setTikTokStatus("Output setup failed - credentials available in Settings");
                             usingAitumVertical = false;
                             setBusy(false);
-                            QMessageBox::critical(this, "TikTok Vertical Output", outputError);
+                            endLiveButton->setEnabled(true);
+                            showTikTokFallbackFailure(outputError);
                             return;
                         }
 
@@ -354,20 +372,18 @@ void T0GStreamDock::startTikTok()
 
                     setTikTokStatus("Configuring OBS fallback output...");
                     if (!tiktokOutput.configure(result.server, result.key, &outputError)) {
-                        setTikTokStatus("Output setup failed");
-                        tiktok.endLive(activeTikTokStreamId, [](bool, QString) {});
-                        activeTikTokStreamId.clear();
+                        setTikTokStatus("Output setup failed - credentials available in Settings");
                         setBusy(false);
-                        QMessageBox::critical(this, "TikTok Output", outputError);
+                        endLiveButton->setEnabled(true);
+                        showTikTokFallbackFailure(outputError);
                         return;
                     }
 
                     if (!tiktokOutput.start(&outputError)) {
-                        setTikTokStatus("Output failed to start");
-                        tiktok.endLive(activeTikTokStreamId, [](bool, QString) {});
-                        activeTikTokStreamId.clear();
+                        setTikTokStatus("Output failed to start - credentials available in Settings");
                         setBusy(false);
-                        QMessageBox::critical(this, "TikTok Output", outputError);
+                        endLiveButton->setEnabled(true);
+                        showTikTokFallbackFailure(outputError);
                         return;
                     }
 
