@@ -9,6 +9,8 @@ on:
       - ".github/workflows/obs-plugin-build.yml"
   workflow_dispatch:
 
+# Build marker: 2026-10-05 - force Actions workflow validation/run after plugin module updates.
+
 jobs:
   windows:
     name: Windows OBS Plugin
