@@ -1,5 +1,7 @@
 #include "t0g-stream-dock.hpp"
 #include "credential-store.hpp"
+#include "preflight-check.hpp"
+#include "session-state.hpp"
 
 #include <obs-frontend-api.h>
 #include <QCheckBox>
@@ -217,8 +219,11 @@ void T0GStreamDock::startSelectedPlatforms()
     if (busy)
         return;
 
-    if (titleEdit->text().trimmed().isEmpty()) {
-        QMessageBox::warning(this, "Missing title", "Enter a stream title first.");
+    const auto preflight = PreflightCheck::run(settings, twitchEnabled->isChecked(), tiktokEnabled->isChecked(),
+                                               titleEdit->text(), tiktok.hasToken(), aitumVertical.available());
+    if (!preflight.ok) {
+        QMessageBox::warning(this, "Stream Pre-flight Failed",
+                             "T0G found the following before starting anything:\n\n" + preflight.message());
         return;
     }
 
@@ -339,13 +344,8 @@ void T0GStreamDock::startTikTok()
 
                     activeTikTokStreamId = result.streamId;
 
-                    // Session-only fallback credentials. Never written to logs or the persistent settings store.
-                    {
-                        QSettings session("T0G", "T0G Stream Control Session");
-                        session.setValue("tiktok/server", result.server);
-                        session.setValue("tiktok/key", result.key);
-                        session.sync();
-                    }
+                    // Session-only fallback credentials. Never logged.
+                    SessionState::setTikTokCredentials(result.server, result.key, result.streamId);
 
                     QString outputError;
                     usingAitumVertical = settings.preferVertical && aitumVertical.available();
@@ -450,11 +450,7 @@ void T0GStreamDock::stopSelectedPlatforms()
 
     const QString streamId = activeTikTokStreamId;
     activeTikTokStreamId.clear();
-    {
-        QSettings session("T0G", "T0G Stream Control Session");
-        session.remove("tiktok");
-        session.sync();
-    }
+    SessionState::clearTikTok();
     setTikTokStatus("Ending LIVE...");
 
     tiktok.endLive(streamId, [this](bool ok, QString error) {
