@@ -3,6 +3,7 @@
 #include <QString>
 #include "tiktok-service.hpp"
 #include "tiktok-output.hpp"
+#include "t0g-settings.hpp"
 
 class QCheckBox;
 class QComboBox;
@@ -16,7 +17,10 @@ public:
 
 private:
     void updateReadyState();
-    void loadTikTokToken();
+    void loadTikTokToken(bool quiet = false);
+    void openSettings();
+    void loadSavedStreamInfo();
+    void saveStreamInfo();
     void startSelectedPlatforms();
     void stopSelectedPlatforms();
     void startTikTok();
@@ -32,6 +36,7 @@ private:
     QLabel *twitchStatus{};
     QLabel *tiktokStatus{};
     QPushButton *loadTikTokButton{};
+    QPushButton *settingsButton{};
     QPushButton *updateButton{};
     QPushButton *goLiveButton{};
     QPushButton *endLiveButton{};
@@ -40,4 +45,5 @@ private:
     TikTokOutput tiktokOutput;
     QString activeTikTokStreamId;
     bool busy = false;
+    T0GSettings settings;
 };
