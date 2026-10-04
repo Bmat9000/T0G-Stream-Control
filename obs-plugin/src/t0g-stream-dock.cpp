@@ -1,4 +1,5 @@
 #include "t0g-stream-dock.hpp"
+#include "credential-store.hpp"
 
 #include <obs-frontend-api.h>
 #include <QCheckBox>
@@ -206,7 +207,12 @@ void T0GStreamDock::startSelectedPlatforms()
     setBusy(true);
 
     if (twitchEnabled->isChecked() && settings.startTwitch) {
-        if (!obs_frontend_streaming_active()) {
+        if (settings.twitchConnectionMode == 1) {
+            if (!startManualTwitch()) {
+                setBusy(false);
+                return;
+            }
+        } else if (!obs_frontend_streaming_active()) {
             setTwitchStatus("Starting...");
             obs_frontend_streaming_start();
         } else {
@@ -215,6 +221,16 @@ void T0GStreamDock::startSelectedPlatforms()
     }
 
     if (tiktokEnabled->isChecked() && settings.startTikTok) {
+        if (settings.tiktokConnectionMode == 1) {
+            if (!startManualTikTok()) {
+                setBusy(false);
+                return;
+            }
+            setBusy(false);
+            endLiveButton->setEnabled(true);
+            return;
+        }
+
         if (!tiktok.hasToken()) {
             setBusy(false);
             QMessageBox::warning(this, "TikTok not connected",
@@ -227,6 +243,55 @@ void T0GStreamDock::startSelectedPlatforms()
 
     setBusy(false);
     endLiveButton->setEnabled(true);
+}
+
+bool T0GStreamDock::startManualTwitch()
+{
+    const QString key = CredentialStore::read("TwitchManualKey");
+    QString error;
+    if (settings.twitchManualServer.isEmpty() || key.isEmpty()) {
+        QMessageBox::warning(this, "Manual Twitch RTMP",
+                             "Open Settings > Twitch and enter the RTMP server and stream key.");
+        return false;
+    }
+    if (!manualTwitchOutput.configure(settings.twitchManualServer, key, &error) ||
+        !manualTwitchOutput.start(&error)) {
+        QMessageBox::critical(this, "Manual Twitch RTMP", error);
+        return false;
+    }
+    setTwitchStatus("LIVE - Manual RTMP");
+    return true;
+}
+
+bool T0GStreamDock::startManualTikTok()
+{
+    const QString key = CredentialStore::read("TikTokManualKey");
+    QString error;
+    if (settings.tiktokManualServer.isEmpty() || key.isEmpty()) {
+        QMessageBox::warning(this, "Manual TikTok RTMP",
+                             "Open Settings > TikTok and enter the RTMP server and stream key.");
+        return false;
+    }
+
+    usingAitumVertical = settings.preferVertical && aitumVertical.available();
+    if (usingAitumVertical) {
+        if (!aitumVertical.configureTikTok(settings.tiktokManualServer, key, &error) ||
+            !aitumVertical.startTikTok(&error)) {
+            usingAitumVertical = false;
+            QMessageBox::critical(this, "Manual TikTok RTMP", error);
+            return false;
+        }
+        setTikTokStatus("LIVE - Manual RTMP / Aitum Vertical");
+        return true;
+    }
+
+    if (!manualTikTokOutput.configure(settings.tiktokManualServer, key, &error) ||
+        !manualTikTokOutput.start(&error)) {
+        QMessageBox::critical(this, "Manual TikTok RTMP", error);
+        return false;
+    }
+    setTikTokStatus("LIVE - Manual RTMP");
+    return true;
 }
 
 void T0GStreamDock::startTikTok()
@@ -322,9 +387,14 @@ void T0GStreamDock::stopSelectedPlatforms()
 
     setBusy(true);
 
-    if (twitchEnabled->isChecked() && settings.stopTwitch && obs_frontend_streaming_active()) {
-        setTwitchStatus("Stopping...");
-        obs_frontend_streaming_stop();
+    if (twitchEnabled->isChecked() && settings.stopTwitch) {
+        if (settings.twitchConnectionMode == 1) {
+            manualTwitchOutput.stop();
+            setTwitchStatus("Manual RTMP ready");
+        } else if (obs_frontend_streaming_active()) {
+            setTwitchStatus("Stopping...");
+            obs_frontend_streaming_stop();
+        }
     }
 
     if (tiktokEnabled->isChecked() && settings.stopTikTok) {
@@ -332,9 +402,18 @@ void T0GStreamDock::stopSelectedPlatforms()
             QString ignored;
             aitumVertical.stopTikTok(&ignored);
             usingAitumVertical = false;
+        } else if (settings.tiktokConnectionMode == 1) {
+            manualTikTokOutput.stop();
         } else {
             tiktokOutput.stop();
         }
+    }
+
+    if (settings.tiktokConnectionMode == 1) {
+        setTikTokStatus("Manual RTMP ready");
+        setBusy(false);
+        endLiveButton->setEnabled(false);
+        return;
     }
 
     if (!settings.stopTikTok || !tiktokEnabled->isChecked() || activeTikTokStreamId.isEmpty()) {
