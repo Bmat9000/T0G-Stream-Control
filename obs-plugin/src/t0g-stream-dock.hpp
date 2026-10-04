@@ -4,6 +4,7 @@
 #include "tiktok-service.hpp"
 #include "tiktok-output.hpp"
 #include "t0g-settings.hpp"
+#include "aitum-vertical.hpp"
 
 class QCheckBox;
 class QComboBox;
@@ -43,6 +44,8 @@ private:
 
     TikTokService tiktok;
     TikTokOutput tiktokOutput;
+    AitumVertical aitumVertical;
+    bool usingAitumVertical = false;
     QString activeTikTokStreamId;
     bool busy = false;
     T0GSettings settings;
