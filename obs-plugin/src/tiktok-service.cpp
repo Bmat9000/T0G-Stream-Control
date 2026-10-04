@@ -83,7 +83,7 @@ QString TikTokService::loadTokenFromStreamlabsDesktop(QString *error)
     }
 
     QFileInfoList logs = dir.entryInfoList({"*.log"}, QDir::Files, QDir::Time);
-    const QRegularExpression re(R"("apiToken":"([a-fA-F0-9]+)")");
+    const QRegularExpression re(QStringLiteral("\\\"apiToken\\\":\\\"([a-fA-F0-9]+)\\\""));
 
     for (const QFileInfo &info : logs) {
         QFile file(info.absoluteFilePath());
