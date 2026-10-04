@@ -5,6 +5,7 @@
 #include "tiktok-output.hpp"
 #include "t0g-settings.hpp"
 #include "aitum-vertical.hpp"
+#include "manual-rtmp-output.hpp"
 
 class QCheckBox;
 class QComboBox;
@@ -25,6 +26,8 @@ private:
     void startSelectedPlatforms();
     void stopSelectedPlatforms();
     void startTikTok();
+    bool startManualTwitch();
+    bool startManualTikTok();
     void setBusy(bool busy);
     void setTikTokStatus(const QString &text);
     void setTwitchStatus(const QString &text);
@@ -44,6 +47,8 @@ private:
 
     TikTokService tiktok;
     TikTokOutput tiktokOutput;
+    ManualRtmpOutput manualTwitchOutput{"T0G Twitch Manual"};
+    ManualRtmpOutput manualTikTokOutput{"T0G TikTok Manual"};
     AitumVertical aitumVertical;
     bool usingAitumVertical = false;
     QString activeTikTokStreamId;
