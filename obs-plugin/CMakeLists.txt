@@ -13,6 +13,8 @@ add_library(t0g-stream-control MODULE
   src/plugin-main.cpp
   src/t0g-stream-dock.cpp
   src/t0g-stream-dock.hpp
+  src/t0g-settings.cpp
+  src/t0g-settings.hpp
   src/tiktok-service.cpp
   src/tiktok-service.hpp
   src/tiktok-output.cpp
