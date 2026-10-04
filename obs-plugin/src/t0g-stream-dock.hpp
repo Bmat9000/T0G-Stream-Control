@@ -17,6 +17,8 @@ class QPushButton;
 class T0GStreamDock final : public QDockWidget {
 public:
     explicit T0GStreamDock(QWidget *parent = nullptr);
+    void triggerGoLive() { startSelectedPlatforms(); }
+    void triggerEndLive() { stopSelectedPlatforms(); }
 
 private:
     void updateReadyState();
