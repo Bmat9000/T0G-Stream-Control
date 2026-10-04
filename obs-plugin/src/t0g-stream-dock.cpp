@@ -9,6 +9,8 @@
 #include <QLabel>
 #include <QLineEdit>
 #include <QMessageBox>
+#include <QSettings>
+#include <QTimer>
 #include <QPushButton>
 #include <QVBoxLayout>
 #include <QWidget>
@@ -21,9 +23,15 @@ T0GStreamDock::T0GStreamDock(QWidget *parent) : QDockWidget("T0G Stream Control"
     auto *root = new QWidget(this);
     auto *layout = new QVBoxLayout(root);
 
+    auto *header = new QHBoxLayout;
     auto *brand = new QLabel("T0G STREAM CONTROL", root);
     brand->setStyleSheet("font-size: 18px; font-weight: 700;");
-    layout->addWidget(brand);
+    settingsButton = new QPushButton("SETTINGS", root);
+    settingsButton->setMaximumWidth(100);
+    header->addWidget(brand);
+    header->addStretch();
+    header->addWidget(settingsButton);
+    layout->addLayout(header);
 
     auto *subtitle = new QLabel("Twitch + TikTok control from inside OBS", root);
     subtitle->setStyleSheet("color: palette(mid);");
@@ -79,7 +87,8 @@ T0GStreamDock::T0GStreamDock(QWidget *parent) : QDockWidget("T0G Stream Control"
     layout->addLayout(buttons);
     layout->addStretch();
 
-    connect(loadTikTokButton, &QPushButton::clicked, this, [this] { loadTikTokToken(); });
+    connect(loadTikTokButton, &QPushButton::clicked, this, [this] { loadTikTokToken(false); });
+    connect(settingsButton, &QPushButton::clicked, this, [this] { openSettings(); });
     connect(goLiveButton, &QPushButton::clicked, this, [this] { startSelectedPlatforms(); });
     connect(endLiveButton, &QPushButton::clicked, this, [this] { stopSelectedPlatforms(); });
     connect(updateButton, &QPushButton::clicked, this, [this] {
@@ -89,8 +98,16 @@ T0GStreamDock::T0GStreamDock(QWidget *parent) : QDockWidget("T0G Stream Control"
     connect(twitchEnabled, &QCheckBox::toggled, this, [this] { updateReadyState(); });
     connect(tiktokEnabled, &QCheckBox::toggled, this, [this] { updateReadyState(); });
 
+    settings = T0GSettings::load();
+    twitchEnabled->setChecked(settings.startTwitch);
+    tiktokEnabled->setChecked(settings.startTikTok);
+    loadSavedStreamInfo();
+
     updateReadyState();
     setWidget(root);
+
+    if (settings.autoLoadTikTok)
+        QTimer::singleShot(700, this, [this] { loadTikTokToken(true); });
 }
 
 void T0GStreamDock::setBusy(bool value)
@@ -110,19 +127,62 @@ void T0GStreamDock::setTwitchStatus(const QString &text)
     twitchStatus->setText("Twitch: " + text);
 }
 
-void T0GStreamDock::loadTikTokToken()
+void T0GStreamDock::loadTikTokToken(bool quiet)
 {
     QString error;
     const QString token = TikTokService::loadTokenFromStreamlabsDesktop(&error);
     if (token.isEmpty()) {
         setTikTokStatus("Not connected");
-        QMessageBox::warning(this, "TikTok Connection", error);
+        if (!quiet)
+            QMessageBox::warning(this, "TikTok Connection", error);
         return;
     }
 
     tiktok.setToken(token);
     setTikTokStatus("Connected through Streamlabs");
     updateReadyState();
+}
+
+void T0GStreamDock::openSettings()
+{
+    T0GSettingsDialog dialog(settings, this);
+    if (dialog.exec() != QDialog::Accepted)
+        return;
+
+    settings = dialog.settings();
+    settings.save();
+    if (!settings.rememberStreamInfo)
+        saveStreamInfo();
+    updateReadyState();
+
+    if (settings.autoLoadTikTok && !tiktok.hasToken())
+        loadTikTokToken(true);
+}
+
+void T0GStreamDock::loadSavedStreamInfo()
+{
+    QSettings s("T0G", "T0G Stream Control");
+    if (settings.rememberStreamInfo) {
+        titleEdit->setText(s.value("last/title", settings.defaultTitle).toString());
+        gameEdit->setText(s.value("last/game", settings.defaultGame).toString());
+        audienceBox->setCurrentIndex(s.value("last/audience", settings.defaultAudience).toInt());
+    } else {
+        titleEdit->setText(settings.defaultTitle);
+        gameEdit->setText(settings.defaultGame);
+        audienceBox->setCurrentIndex(settings.defaultAudience);
+    }
+}
+
+void T0GStreamDock::saveStreamInfo()
+{
+    QSettings s("T0G", "T0G Stream Control");
+    if (settings.rememberStreamInfo) {
+        s.setValue("last/title", titleEdit->text().trimmed());
+        s.setValue("last/game", gameEdit->text().trimmed());
+        s.setValue("last/audience", audienceBox->currentIndex());
+    } else {
+        s.remove("last");
+    }
 }
 
 void T0GStreamDock::startSelectedPlatforms()
@@ -135,9 +195,10 @@ void T0GStreamDock::startSelectedPlatforms()
         return;
     }
 
+    saveStreamInfo();
     setBusy(true);
 
-    if (twitchEnabled->isChecked()) {
+    if (twitchEnabled->isChecked() && settings.startTwitch) {
         if (!obs_frontend_streaming_active()) {
             setTwitchStatus("Starting...");
             obs_frontend_streaming_start();
@@ -146,7 +207,7 @@ void T0GStreamDock::startSelectedPlatforms()
         }
     }
 
-    if (tiktokEnabled->isChecked()) {
+    if (tiktokEnabled->isChecked() && settings.startTikTok) {
         if (!tiktok.hasToken()) {
             setBusy(false);
             QMessageBox::warning(this, "TikTok not connected",
@@ -221,16 +282,26 @@ void T0GStreamDock::stopSelectedPlatforms()
     if (busy)
         return;
 
+    if (settings.confirmBeforeEnd) {
+        const auto answer = QMessageBox::question(
+            this, "End selected streams",
+            "End the selected live streams now?",
+            QMessageBox::Yes | QMessageBox::Cancel, QMessageBox::Cancel);
+        if (answer != QMessageBox::Yes)
+            return;
+    }
+
     setBusy(true);
 
-    if (twitchEnabled->isChecked() && obs_frontend_streaming_active()) {
+    if (twitchEnabled->isChecked() && settings.stopTwitch && obs_frontend_streaming_active()) {
         setTwitchStatus("Stopping...");
         obs_frontend_streaming_stop();
     }
 
-    tiktokOutput.stop();
+    if (tiktokEnabled->isChecked() && settings.stopTikTok)
+        tiktokOutput.stop();
 
-    if (activeTikTokStreamId.isEmpty()) {
+    if (!settings.stopTikTok || !tiktokEnabled->isChecked() || activeTikTokStreamId.isEmpty()) {
         setTikTokStatus(tiktok.hasToken() ? "Connected" : "Not connected");
         setBusy(false);
         endLiveButton->setEnabled(false);
