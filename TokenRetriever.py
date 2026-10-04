@@ -180,5 +180,7 @@ class TokenRetriever:
             return None
 
         token = data["data"].get("oauth_token")
-        print(f"Got Streamlabs OAuth token: {token}")
+        # Never write bearer credentials to logs.
+        if token:
+            print("Streamlabs authentication completed successfully.")
         return token
