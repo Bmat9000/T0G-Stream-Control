@@ -21,6 +21,7 @@ private:
     void updateReadyState();
     void loadTikTokToken(bool quiet = false);
     void openSettings();
+    void showTikTokFallbackFailure(const QString &detail);
     void loadSavedStreamInfo();
     void saveStreamInfo();
     void startSelectedPlatforms();
