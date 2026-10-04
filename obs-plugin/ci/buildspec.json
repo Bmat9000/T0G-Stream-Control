@@ -33,5 +33,10 @@
   "version": "0.2.0",
   "author": "T0G",
   "website": "https://github.com/Bmat9000/T0G-TikTok-Live-Tools",
-  "email": "noreply@example.com"
+  "email": "noreply@example.com",
+  "platformConfig": {
+    "macos": {
+      "bundleId": "com.t0g.streamcontrol"
+    }
+  }
 }
