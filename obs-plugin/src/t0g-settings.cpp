@@ -2,6 +2,8 @@
 #include "credential-store.hpp"
 
 #include <QCheckBox>
+#include <QApplication>
+#include <QClipboard>
 #include <QComboBox>
 #include <QDialogButtonBox>
 #include <QFormLayout>
@@ -101,6 +103,48 @@ T0GSettingsDialog::T0GSettingsDialog(const T0GSettings &cfg, QWidget *parent) : 
     accountsLayout->addWidget(tt);
     layout->addWidget(accounts);
 
+    auto *credentials = new QGroupBox("Current Stream Credentials / Fallback", this);
+    auto *credentialsForm = new QFormLayout(credentials);
+
+    liveTikTokServer = new QLineEdit(credentials);
+    liveTikTokServer->setReadOnly(true);
+    liveTikTokServer->setPlaceholderText("Available after TikTok LIVE is created");
+    auto *serverRow = new QWidget(credentials);
+    auto *serverLayout = new QHBoxLayout(serverRow);
+    serverLayout->setContentsMargins(0, 0, 0, 0);
+    auto *copyServer = new QPushButton("Copy", serverRow);
+    serverLayout->addWidget(liveTikTokServer);
+    serverLayout->addWidget(copyServer);
+
+    liveTikTokKey = new QLineEdit(credentials);
+    liveTikTokKey->setReadOnly(true);
+    liveTikTokKey->setEchoMode(QLineEdit::Password);
+    liveTikTokKey->setPlaceholderText("Available after TikTok LIVE is created");
+    auto *keyRow = new QWidget(credentials);
+    auto *keyLayout = new QHBoxLayout(keyRow);
+    keyLayout->setContentsMargins(0, 0, 0, 0);
+    showLiveTikTokKey = new QPushButton("Show", keyRow);
+    auto *copyKey = new QPushButton("Copy", keyRow);
+    keyLayout->addWidget(liveTikTokKey);
+    keyLayout->addWidget(showLiveTikTokKey);
+    keyLayout->addWidget(copyKey);
+
+    auto *note = new QLabel(
+        "These are the current TikTok LIVE credentials. Use them if automatic OBS/Aitum setup fails. "
+        "Automatic credentials are session-only and are cleared when the LIVE ends.", credentials);
+    note->setWordWrap(true);
+
+    credentialsForm->addRow("TikTok RTMP server", serverRow);
+    credentialsForm->addRow("TikTok stream key", keyRow);
+    credentialsForm->addRow("", note);
+    layout->addWidget(credentials);
+
+    connect(copyServer, &QPushButton::clicked, this, [this] { copyField(liveTikTokServer); });
+    connect(copyKey, &QPushButton::clicked, this, [this] { copyField(liveTikTokKey); });
+    connect(showLiveTikTokKey, &QPushButton::clicked, this,
+            [this] { toggleSecret(liveTikTokKey, showLiveTikTokKey); });
+    refreshLiveCredentials();
+
     auto *general = new QGroupBox("General", this);
     auto *generalLayout = new QVBoxLayout(general);
     autoLoadTikTok = new QCheckBox("Automatically load TikTok login from Streamlabs when OBS starts", general);
@@ -160,6 +204,29 @@ T0GSettingsDialog::T0GSettingsDialog(const T0GSettings &cfg, QWidget *parent) : 
     connect(buttons, &QDialogButtonBox::accepted, this, [this] { saveSecrets(); accept(); });
     connect(buttons, &QDialogButtonBox::rejected, this, &QDialog::reject);
     layout->addWidget(buttons);
+}
+
+void T0GSettingsDialog::refreshLiveCredentials()
+{
+    QSettings s("T0G", "T0G Stream Control Session");
+    liveTikTokServer->setText(s.value("tiktok/server").toString());
+    liveTikTokKey->setText(s.value("tiktok/key").toString());
+}
+
+void T0GSettingsDialog::copyField(QLineEdit *field)
+{
+    if (!field || field->text().isEmpty())
+        return;
+    QApplication::clipboard()->setText(field->text());
+}
+
+void T0GSettingsDialog::toggleSecret(QLineEdit *field, QPushButton *button)
+{
+    if (!field || !button)
+        return;
+    const bool hidden = field->echoMode() == QLineEdit::Password;
+    field->setEchoMode(hidden ? QLineEdit::Normal : QLineEdit::Password);
+    button->setText(hidden ? "Hide" : "Show");
 }
 
 void T0GSettingsDialog::updateAccountFields()
