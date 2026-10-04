@@ -4,12 +4,11 @@ on:
   push:
     branches:
       - feature/t0g-obs-stream-control
+  pull_request:
     paths:
       - "obs-plugin/**"
       - ".github/workflows/obs-plugin-build.yml"
   workflow_dispatch:
-
-# Build marker: 2026-10-05 - force Actions workflow validation/run after plugin module updates.
 
 jobs:
   windows:
