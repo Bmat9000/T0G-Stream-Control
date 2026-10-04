@@ -102,13 +102,25 @@ T0GStreamDock::T0GStreamDock(QWidget *parent) : QDockWidget("T0G Stream Control"
     connect(goLiveButton, &QPushButton::clicked, this, [this] { startSelectedPlatforms(); });
     connect(endLiveButton, &QPushButton::clicked, this, [this] { stopSelectedPlatforms(); });
     connect(updateButton, &QPushButton::clicked, this, [this] {
-        QMessageBox::information(this, "T0G Stream Control",
-                                 "Your title/game settings are ready. TikTok will apply them when you go live. Twitch metadata sync is not wired yet.");
+        if (!twitchEnabled->isChecked() || settings.twitchConnectionMode == 1) {
+            QMessageBox::information(this, "T0G Stream Control",
+                                     "TikTok will apply the title/game when its LIVE session is created.");
+            return;
+        }
+        twitch.updateChannel(titleEdit->text().trimmed(), gameEdit->text().trimmed(),
+            [this](bool ok, QString msg) {
+                if (ok) QMessageBox::information(this, "Twitch Updated", msg);
+                else QMessageBox::warning(this, "Twitch Update Failed", msg);
+            });
     });
     connect(twitchEnabled, &QCheckBox::toggled, this, [this] { updateReadyState(); });
     connect(tiktokEnabled, &QCheckBox::toggled, this, [this] { updateReadyState(); });
 
     settings = T0GSettings::load();
+    twitch.setClientId(settings.twitchClientId);
+    twitch.restore([this](bool ok, QString name) {
+        if (ok) setTwitchStatus("Connected as " + name);
+    });
     twitchEnabled->setChecked(settings.startTwitch);
     tiktokEnabled->setChecked(settings.startTikTok);
     loadSavedStreamInfo();
@@ -161,6 +173,10 @@ void T0GStreamDock::openSettings()
 
     settings = dialog.settings();
     settings.save();
+    twitch.setClientId(settings.twitchClientId);
+    twitch.restore([this](bool ok, QString name) {
+        setTwitchStatus(ok ? ("Connected as " + name) : "Ready when OBS is configured");
+    });
     if (!settings.rememberStreamInfo)
         saveStreamInfo();
     updateReadyState();
