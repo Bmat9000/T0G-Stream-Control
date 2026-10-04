@@ -1,0 +1,57 @@
+name: Build T0G OBS Plugin
+
+on:
+  push:
+    branches:
+      - feature/t0g-obs-stream-control
+    paths:
+      - "obs-plugin/**"
+      - ".github/workflows/obs-plugin-build.yml"
+  workflow_dispatch:
+
+jobs:
+  windows:
+    name: Windows OBS Plugin
+    runs-on: windows-2022
+
+    steps:
+      - name: Checkout OBS plugin template
+        uses: actions/checkout@v4
+        with:
+          repository: obsproject/obs-plugintemplate
+          ref: master
+          path: .
+
+      - name: Checkout T0G source
+        uses: actions/checkout@v4
+        with:
+          path: t0g-source
+          ref: ${{ github.sha }}
+
+      - name: Stage T0G plugin in OBS build template
+        shell: pwsh
+        run: |
+          Remove-Item -Recurse -Force src
+          Copy-Item -Recurse t0g-source/obs-plugin/src src
+          Copy-Item -Force t0g-source/obs-plugin/ci/CMakeLists.txt CMakeLists.txt
+          Copy-Item -Force t0g-source/obs-plugin/ci/buildspec.json buildspec.json
+
+      - name: Build plugin
+        uses: ./.github/actions/build-plugin
+        with:
+          target: x64
+          config: RelWithDebInfo
+
+      - name: Package plugin
+        uses: ./.github/actions/package-plugin
+        with:
+          target: x64
+          config: RelWithDebInfo
+          package: false
+
+      - name: Upload T0G OBS plugin
+        uses: actions/upload-artifact@v4
+        with:
+          name: T0G-Stream-Control-Windows
+          path: release/*
+          if-no-files-found: error
