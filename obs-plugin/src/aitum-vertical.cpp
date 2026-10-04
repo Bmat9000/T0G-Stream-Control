@@ -2,7 +2,7 @@
 
 #include <obs.h>
 #include <obs-module.h>
-#include <util/proc.h>
+#include <callback/proc.h>
 
 namespace {
 bool callProc(const char *name, calldata_t *cd)
