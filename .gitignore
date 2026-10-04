@@ -1,0 +1,16 @@
+*.spec
+build/*
+dist/*
+*/__pycache__/*
+.env
+__pycache__/*
+*.json
+.venv/*
+StreamLabsTikTokStreamKeyGenerator.dist/*
+*.xml
+*.exe
+*.bat
+StreamLabsTikTokStreamKeyGeneratorCLI.py
+*.pem
+downloaded_files/*
+_version.py
