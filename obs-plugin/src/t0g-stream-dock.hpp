@@ -6,6 +6,7 @@
 #include "t0g-settings.hpp"
 #include "aitum-vertical.hpp"
 #include "manual-rtmp-output.hpp"
+#include "twitch-service.hpp"
 
 class QCheckBox;
 class QComboBox;
@@ -47,6 +48,7 @@ private:
     QPushButton *endLiveButton{};
 
     TikTokService tiktok;
+    TwitchService twitch;
     TikTokOutput tiktokOutput;
     ManualRtmpOutput manualTwitchOutput{"T0G Twitch Manual"};
     ManualRtmpOutput manualTikTokOutput{"T0G TikTok Manual"};
