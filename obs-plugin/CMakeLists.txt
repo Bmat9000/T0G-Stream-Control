@@ -15,6 +15,8 @@ add_library(t0g-stream-control MODULE
   src/t0g-stream-dock.hpp
   src/t0g-settings.cpp
   src/t0g-settings.hpp
+  src/aitum-vertical.cpp
+  src/aitum-vertical.hpp
   src/tiktok-service.cpp
   src/tiktok-service.hpp
   src/tiktok-output.cpp
