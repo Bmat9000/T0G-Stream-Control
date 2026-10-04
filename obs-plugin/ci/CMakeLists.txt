@@ -32,6 +32,8 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
   src/t0g-stream-dock.hpp
   src/t0g-settings.cpp
   src/t0g-settings.hpp
+  src/aitum-vertical.cpp
+  src/aitum-vertical.hpp
   src/tiktok-service.cpp
   src/tiktok-service.hpp
   src/tiktok-output.cpp
