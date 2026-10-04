@@ -2,6 +2,7 @@
 
 #include <obs.h>
 #include <obs-frontend-api.h>
+#include <utility>
 
 ManualRtmpOutput::ManualRtmpOutput(QString outputName) : name(std::move(outputName)) {}
 
