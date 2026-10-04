@@ -319,6 +319,15 @@ void T0GStreamDock::startTikTok()
                     }
 
                     activeTikTokStreamId = result.streamId;
+
+                    // Session-only fallback credentials. Never written to logs or the persistent settings store.
+                    {
+                        QSettings session("T0G", "T0G Stream Control Session");
+                        session.setValue("tiktok/server", result.server);
+                        session.setValue("tiktok/key", result.key);
+                        session.sync();
+                    }
+
                     QString outputError;
                     usingAitumVertical = settings.preferVertical && aitumVertical.available();
 
@@ -425,6 +434,11 @@ void T0GStreamDock::stopSelectedPlatforms()
 
     const QString streamId = activeTikTokStreamId;
     activeTikTokStreamId.clear();
+    {
+        QSettings session("T0G", "T0G Stream Control Session");
+        session.remove("tiktok");
+        session.sync();
+    }
     setTikTokStatus("Ending LIVE...");
 
     tiktok.endLive(streamId, [this](bool ok, QString error) {
