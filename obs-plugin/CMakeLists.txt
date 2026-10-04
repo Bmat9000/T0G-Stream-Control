@@ -11,6 +11,14 @@ find_package(Qt6 REQUIRED COMPONENTS Core Widgets Network)
 
 add_library(t0g-stream-control MODULE
   src/plugin-main.cpp
+  src/twitch-service.cpp
+  src/twitch-service.hpp
+  src/preflight-check.cpp
+  src/preflight-check.hpp
+  src/stream-preset.cpp
+  src/stream-preset.hpp
+  src/session-state.cpp
+  src/session-state.hpp
   src/t0g-stream-dock.cpp
   src/t0g-stream-dock.hpp
   src/t0g-settings.cpp
