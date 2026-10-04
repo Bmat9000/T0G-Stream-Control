@@ -24,6 +24,7 @@ target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE
   Qt6::Core
   Qt6::Widgets
   Qt6::Network
+  $<$<PLATFORM_ID:Windows>:advapi32>
 )
 
 target_sources(${CMAKE_PROJECT_NAME} PRIVATE
@@ -34,6 +35,10 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
   src/t0g-settings.hpp
   src/aitum-vertical.cpp
   src/aitum-vertical.hpp
+  src/manual-rtmp-output.cpp
+  src/manual-rtmp-output.hpp
+  src/credential-store.cpp
+  src/credential-store.hpp
   src/tiktok-service.cpp
   src/tiktok-service.hpp
   src/tiktok-output.cpp
