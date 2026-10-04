@@ -6,6 +6,8 @@ class QCheckBox;
 class QComboBox;
 class QLineEdit;
 class QPushButton;
+class QLabel;
+class TwitchService;
 
 struct T0GSettings {
     bool autoLoadTikTok = true;
@@ -22,6 +24,7 @@ struct T0GSettings {
 
     int twitchConnectionMode = 0; // 0 = OBS/account, 1 = manual RTMP
     QString twitchManualServer;
+    QString twitchClientId;
     int tiktokConnectionMode = 0; // 0 = Streamlabs automatic, 1 = manual RTMP
     QString tiktokManualServer;
 
@@ -59,6 +62,11 @@ private:
     QLineEdit *twitchServer{};
     QLineEdit *twitchKey{};
     QPushButton *clearTwitch{};
+    QLineEdit *twitchClientId{};
+    QLabel *twitchAccountStatus{};
+    QPushButton *connectTwitch{};
+    QPushButton *disconnectTwitch{};
+    TwitchService *twitchService{};
     QComboBox *tiktokMode{};
     QLineEdit *tiktokServer{};
     QLineEdit *tiktokKey{};
