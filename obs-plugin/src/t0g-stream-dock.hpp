@@ -31,6 +31,7 @@ private:
     void openSettings();
     void openHelpMenu();
     void showPluginLogs();
+    void showAitumTikTokSetupGuide();
     void showTikTokFallbackFailure(const QString &detail);
     void loadSavedStreamInfo();
     void saveStreamInfo();
