@@ -21,8 +21,9 @@ QString TwitchService::accessToken()const{return CredentialStore::read("TwitchOA
 QString TwitchService::refreshToken()const{return CredentialStore::read("TwitchOAuthRefresh");}
 bool TwitchService::connected()const{return !userId.isEmpty()&&!accessToken().isEmpty();}
 QString TwitchService::displayName()const{return userName;}
+QString TwitchService::loginName()const{return userLogin;}
 void TwitchService::persistTokens(const QString&a,const QString&r){QString e;CredentialStore::write("TwitchOAuthAccess",a,&e);if(!r.isEmpty())CredentialStore::write("TwitchOAuthRefresh",r,&e);}
-void TwitchService::disconnectAccount(){pollTimer->stop();CredentialStore::remove("TwitchOAuthAccess");CredentialStore::remove("TwitchOAuthRefresh");userId.clear();userName.clear();emit accountChanged();}
+void TwitchService::disconnectAccount(){pollTimer->stop();CredentialStore::remove("TwitchOAuthAccess");CredentialStore::remove("TwitchOAuthRefresh");userId.clear();userName.clear();userLogin.clear();emit accountChanged();}
 
 void TwitchService::restore(Result done){
     if(client.isEmpty()||accessToken().isEmpty()){if(done)done(false,"Not connected");return;} fetchIdentity(done);
@@ -31,7 +32,7 @@ void TwitchService::connectDevice(Result done){
     if(client.isEmpty()){done(false,"Enter the Twitch Client ID in Settings first.");return;}
     QNetworkRequest req(QUrl("https://id.twitch.tv/oauth2/device"));
     req.setHeader(QNetworkRequest::ContentTypeHeader,"application/x-www-form-urlencoded");
-    QUrlQuery q;q.addQueryItem("client_id",client);q.addQueryItem("scopes","channel:manage:broadcast");
+    QUrlQuery q;q.addQueryItem("client_id",client);q.addQueryItem("scopes","channel:manage:broadcast user:read:chat");
     auto *r=net->post(req,q.query(QUrl::FullyEncoded).toUtf8());
     connect(r,&QNetworkReply::finished,this,[this,r,done]{
         const auto o=QJsonDocument::fromJson(r->readAll()).object();r->deleteLater();
@@ -46,7 +47,7 @@ void TwitchService::pollDevice(){
     if(deviceCode.isEmpty()){pollTimer->stop();return;}
     QNetworkRequest req(QUrl("https://id.twitch.tv/oauth2/token"));
     req.setHeader(QNetworkRequest::ContentTypeHeader,"application/x-www-form-urlencoded");
-    QUrlQuery q;q.addQueryItem("client_id",client);q.addQueryItem("scope","channel:manage:broadcast");
+    QUrlQuery q;q.addQueryItem("client_id",client);q.addQueryItem("scope","channel:manage:broadcast user:read:chat");
     q.addQueryItem("device_code",deviceCode);q.addQueryItem("grant_type","urn:ietf:params:oauth:grant-type:device_code");
     auto *r=net->post(req,q.query(QUrl::FullyEncoded).toUtf8());
     connect(r,&QNetworkReply::finished,this,[this,r]{
@@ -60,7 +61,7 @@ void TwitchService::pollDevice(){
 void TwitchService::fetchIdentity(Result done){
     QNetworkRequest req(QUrl("https://api.twitch.tv/helix/users"));req.setRawHeader("Client-Id",client.toUtf8());req.setRawHeader("Authorization",("Bearer "+accessToken()).toUtf8());
     auto*r=net->get(req);connect(r,&QNetworkReply::finished,this,[this,r,done]{auto a=QJsonDocument::fromJson(r->readAll()).object().value("data").toArray();r->deleteLater();
-        if(a.isEmpty()){if(done)done(false,"Twitch login could not be validated.");return;}auto o=a.first().toObject();userId=o.value("id").toString();userName=o.value("display_name").toString();emit accountChanged();if(done)done(true,userName);});
+        if(a.isEmpty()){if(done)done(false,"Twitch login could not be validated.");return;}auto o=a.first().toObject();userId=o.value("id").toString();userName=o.value("display_name").toString();userLogin=o.value("login").toString();emit accountChanged();if(done)done(true,userName);});
 }
 void TwitchService::searchCategory(const QString&game,std::function<void(bool,QString,QString)> done){
     if(game.trimmed().isEmpty()){done(true,{},{});return;} QUrl u("https://api.twitch.tv/helix/search/categories");QUrlQuery q;q.addQueryItem("query",game);u.setQuery(q);
