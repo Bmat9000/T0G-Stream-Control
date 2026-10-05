@@ -5,6 +5,7 @@
 #include <QLabel>
 #include <QPushButton>
 #include <QScrollArea>
+#include <QScrollBar>
 #include <QTimer>
 #include <QUrl>
 #include <QVBoxLayout>
