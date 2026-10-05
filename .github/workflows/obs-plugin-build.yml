@@ -87,8 +87,8 @@ jobs:
         with:
           tag_name: t0g-stream-control-latest
           name: T0G Stream Control - Latest
-          prerelease: true
-          make_latest: false
+          prerelease: false
+          make_latest: true
           files: release/T0G-Stream-Control-Setup.exe
           body: |
             Automatic latest Windows build of T0G Stream Control.
