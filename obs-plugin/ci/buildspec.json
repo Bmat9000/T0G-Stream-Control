@@ -1,0 +1,42 @@
+{
+  "dependencies": {
+    "obs-studio": {
+      "version": "32.1.2",
+      "baseUrl": "https://github.com/obsproject/obs-studio/archive/refs/tags",
+      "label": "OBS sources",
+      "hashes": {
+        "macos": "39751f067bacc13d44b116c5138491b5f1391f91516d3d590d874edd21292291",
+        "windows-x64": "21cba22292985cf0da967d5c618999b40eaa32b73d2ab8b06154b5ea1b3d3798"
+      }
+    },
+    "prebuilt": {
+      "version": "2025-08-23",
+      "baseUrl": "https://github.com/obsproject/obs-deps/releases/download",
+      "label": "Pre-Built obs-deps",
+      "hashes": {
+        "macos": "9403bb43fb0a9bb215739a5659ca274fe884dbbbcd22bd9ca781c961fb041c42",
+        "windows-x64": "8de229cff6f1981508c0eb646b35e644633a5855787b9f5d3b90ae2aeb87ffc1"
+      }
+    },
+    "qt6": {
+      "version": "2025-08-23",
+      "baseUrl": "https://github.com/obsproject/obs-deps/releases/download",
+      "label": "Pre-Built Qt6",
+      "hashes": {
+        "macos": "990f11638b80a4509e14e8c315f6e4caa0861e37fcd3113a256fbff835ffca29",
+        "windows-x64": "c62e82483bc7c0bf199e8ac3220c66a85a6e8a0cd69a05b6d44f873b830e415f"
+      }
+    }
+  },
+  "name": "t0g-stream-control",
+  "displayName": "T0G Stream Control",
+  "version": "0.2.1",
+  "author": "T0G",
+  "website": "https://github.com/Bmat9000/T0G-TikTok-Live-Tools",
+  "email": "noreply@example.com",
+  "platformConfig": {
+    "macos": {
+      "bundleId": "com.t0g.streamcontrol"
+    }
+  }
+}

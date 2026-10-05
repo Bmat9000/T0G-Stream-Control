@@ -1,0 +1,217 @@
+name: Build T0G OBS Plugin
+
+on:
+  push:
+    branches:
+      - feature/t0g-obs-stream-control
+  pull_request:
+    paths:
+      - "obs-plugin/**"
+      - ".github/workflows/obs-plugin-build.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    name: Windows OBS Plugin
+    runs-on: windows-2022
+
+    steps:
+      - name: Checkout OBS plugin template
+        uses: actions/checkout@v4
+        with:
+          repository: obsproject/obs-plugintemplate
+          ref: master
+          path: .
+
+      - name: Checkout T0G source
+        uses: actions/checkout@v4
+        with:
+          path: t0g-source
+          ref: ${{ github.sha }}
+
+      - name: Stage T0G plugin in OBS build template
+        shell: pwsh
+        run: |
+          Remove-Item -Recurse -Force src
+          Copy-Item -Recurse t0g-source/obs-plugin/src src
+          Copy-Item -Force t0g-source/obs-plugin/ci/CMakeLists.txt CMakeLists.txt
+          Copy-Item -Force t0g-source/obs-plugin/ci/buildspec.json buildspec.json
+
+      - name: Build plugin
+        uses: ./.github/actions/build-plugin
+        with:
+          target: x64
+          config: RelWithDebInfo
+
+      - name: Package plugin
+        uses: ./.github/actions/package-plugin
+        with:
+          target: x64
+          config: RelWithDebInfo
+          package: false
+
+      - name: Diagnose plugin DLL before installer
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $dll = Get-ChildItem -Path release -Recurse -Filter "t0g-stream-control.dll" | Select-Object -First 1
+          if (-not $dll) { throw "t0g-stream-control.dll was not produced." }
+
+          Write-Host "::group::T0G DLL identity"
+          Write-Host "DLL: $($dll.FullName)"
+          Write-Host "Size: $($dll.Length) bytes"
+          Get-FileHash $dll.FullName -Algorithm SHA256 | Format-List
+          Write-Host "::endgroup::"
+
+          $dumpbin = Get-ChildItem "${env:ProgramFiles}\Microsoft Visual Studio\2022\Enterprise\VC\Tools\MSVC" -Recurse -Filter dumpbin.exe -ErrorAction SilentlyContinue |
+            Where-Object { $_.FullName -match '\\Hostx64\\x64\\dumpbin.exe$' } |
+            Sort-Object FullName -Descending |
+            Select-Object -First 1
+          if (-not $dumpbin) { throw "dumpbin.exe not found on the Windows runner." }
+
+          Write-Host "::group::T0G DLL headers"
+          $headers = (& $dumpbin.FullName /headers $dll.FullName | Out-String)
+          Write-Host $headers
+          if ($LASTEXITCODE -ne 0) { throw "dumpbin /headers failed." }
+          if ($headers -notmatch "machine \(x64\)") {
+            throw "Plugin is not an x64 DLL. OBS 64-bit requires IMAGE_FILE_MACHINE_AMD64."
+          }
+          Write-Host "::endgroup::"
+
+          Write-Host "::group::T0G DLL imports"
+          & $dumpbin.FullName /dependents $dll.FullName
+          if ($LASTEXITCODE -ne 0) { throw "dumpbin /dependents failed." }
+          Write-Host "::endgroup::"
+
+          Write-Host "::group::T0G full import table"
+          & $dumpbin.FullName /imports $dll.FullName
+          if ($LASTEXITCODE -ne 0) { throw "dumpbin /imports failed." }
+          Write-Host "::endgroup::"
+
+          Write-Host "::group::T0G OBS module exports"
+          $exports = (& $dumpbin.FullName /exports $dll.FullName | Out-String)
+          Write-Host $exports
+          foreach ($required in @("obs_module_load", "obs_module_unload", "obs_module_ver", "obs_module_set_pointer")) {
+            if ($exports -notmatch [regex]::Escape($required)) {
+              throw "Required OBS export '$required' is missing."
+            }
+          }
+          Write-Host "::endgroup::"
+          Write-Host "T0G DLL diagnostics passed."
+
+      - name: Test DLL with Windows loader
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $dll = Get-ChildItem -Path release -Recurse -Filter "t0g-stream-control.dll" | Select-Object -First 1
+          if (-not $dll) { throw "t0g-stream-control.dll was not produced." }
+
+          $native = @'
+          using System;
+          using System.ComponentModel;
+          using System.Runtime.InteropServices;
+          public static class T0GNativeLoader {
+              [DllImport("kernel32.dll", SetLastError=true, CharSet=CharSet.Unicode)]
+              public static extern IntPtr LoadLibraryEx(string lpFileName, IntPtr hFile, uint dwFlags);
+              [DllImport("kernel32.dll", SetLastError=true)]
+              public static extern bool FreeLibrary(IntPtr hModule);
+          }
+          '@
+          Add-Type $native
+          $obsDll = Get-ChildItem -Path . -Recurse -Filter "obs.dll" -ErrorAction SilentlyContinue | Select-Object -First 1
+          $frontendDll = Get-ChildItem -Path . -Recurse -Filter "obs-frontend-api.dll" -ErrorAction SilentlyContinue | Select-Object -First 1
+          if (-not $obsDll) { throw "obs.dll could not be located in the build workspace." }
+          if (-not $frontendDll) { throw "obs-frontend-api.dll could not be located in the build workspace." }
+
+          $runtimeDirs = @($obsDll.DirectoryName, $frontendDll.DirectoryName) | Select-Object -Unique
+
+          # The OBS dependency bundle contains more than Qt (for example curl/SSL and
+          # other transitive DLLs used by obs.dll). Add every dependency bin folder,
+          # not just the directory containing Qt6Core.dll.
+          $dependencyBinDirs = Get-ChildItem -Path ".deps" -Recurse -Filter "*.dll" -ErrorAction SilentlyContinue |
+            ForEach-Object { $_.DirectoryName } |
+            Select-Object -Unique
+          $runtimeDirs = @($runtimeDirs) + @($dependencyBinDirs)
+          $runtimeDirs = @($runtimeDirs | Where-Object { $_ } | Select-Object -Unique)
+
+          foreach ($dir in $runtimeDirs) {
+            Write-Host "Adding runtime DLL directory: $dir"
+          }
+          $runtimePath = [string]::Join(';', [string[]]$runtimeDirs)
+          $env:PATH = "$runtimePath;$env:PATH"
+
+          # Use normal dependency resolution so PATH is honored for transitive
+          # OBS/Qt dependencies. LOAD_WITH_ALTERED_SEARCH_PATH can bypass the
+          # PATH setup above and produce a misleading error 126 in CI.
+          $handle = [T0GNativeLoader]::LoadLibraryEx($dll.FullName, [IntPtr]::Zero, 0)
+          if ($handle -eq [IntPtr]::Zero) {
+            $code = [Runtime.InteropServices.Marshal]::GetLastWin32Error()
+            $message = (New-Object ComponentModel.Win32Exception($code)).Message
+            throw "Windows LoadLibraryEx failed for t0g-stream-control.dll. Win32 error ${code}: $message"
+          }
+          [T0GNativeLoader]::FreeLibrary($handle) | Out-Null
+          Write-Host "Windows loader accepted t0g-stream-control.dll."
+
+      - name: Create one-click Windows installer
+        shell: pwsh
+        run: |
+          $pluginDll = Get-ChildItem -Path release -Recurse -Filter "t0g-stream-control.dll" | Select-Object -First 1
+          if (-not $pluginDll) { throw "t0g-stream-control.dll was not found in the packaged release." }
+
+          $payload = "installer-payload"
+          New-Item -ItemType Directory -Force -Path "$payload/obs-plugins/64bit" | Out-Null
+          Copy-Item -Force $pluginDll.FullName "$payload/obs-plugins/64bit/t0g-stream-control.dll"
+
+          # Qt HTTPS support needs a TLS backend plugin. Bundle the exact backend
+          # from the OBS 32.1.2 Qt dependency set used for this plugin build.
+          $tlsPlugins = Get-ChildItem -Path ".deps" -Recurse -Filter "*.dll" -ErrorAction SilentlyContinue |
+            Where-Object { $_.DirectoryName -match '[\\/]tls$' -and $_.Name -match '^q.*backend\.dll$' }
+          if (-not $tlsPlugins) {
+            throw "No Qt TLS backend plugins were found in the OBS dependency bundle."
+          }
+
+          New-Item -ItemType Directory -Force -Path "$payload/bin/64bit/tls" | Out-Null
+          foreach ($tls in $tlsPlugins) {
+            Write-Host "Bundling Qt TLS backend: $($tls.FullName)"
+            Copy-Item -Force $tls.FullName "$payload/bin/64bit/tls/$($tls.Name)"
+          }
+
+          $pluginData = Get-ChildItem -Path release -Recurse -Directory |
+            Where-Object { $_.Name -eq "data" -and $_.Parent.Name -eq "t0g-stream-control" } |
+            Select-Object -First 1
+          if ($pluginData) {
+            New-Item -ItemType Directory -Force -Path "$payload/data/obs-plugins/t0g-stream-control" | Out-Null
+            Copy-Item -Recurse -Force "$($pluginData.FullName)/*" "$payload/data/obs-plugins/t0g-stream-control/"
+          }
+
+          choco install innosetup --no-progress -y
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" /DPluginPayload="$((Resolve-Path $payload).Path)" /DInstallerOutput="$((Resolve-Path release).Path)" "t0g-source/installer/T0G-Stream-Control.iss"
+          if ($LASTEXITCODE -ne 0) { throw "Inno Setup failed with exit code $LASTEXITCODE" }
+
+      - name: Upload T0G OBS plugin
+        uses: actions/upload-artifact@v4
+        with:
+          name: T0G-Stream-Control-Windows
+          path: |
+            release/T0G-Stream-Control-Setup.exe
+            release/**/*.zip
+          if-no-files-found: error
+
+      - name: Publish latest installer release
+        if: github.event_name == 'workflow_dispatch'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: t0g-stream-control-latest
+          name: T0G Stream Control - Latest
+          prerelease: false
+          make_latest: true
+          files: release/T0G-Stream-Control-Setup.exe
+          body: |
+            Automatic latest Windows build of T0G Stream Control.
+
+            Download **T0G-Stream-Control-Setup.exe**, close OBS, and run the installer.
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
