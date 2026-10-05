@@ -128,18 +128,32 @@ using System.Runtime.InteropServices;
 public static class T0GObsLikeLoader {
  [DllImport("kernel32.dll",SetLastError=true,CharSet=CharSet.Unicode)] public static extern IntPtr LoadLibraryEx(string f,IntPtr h,uint flags);
  [DllImport("kernel32.dll",SetLastError=true)] public static extern bool FreeLibrary(IntPtr h);
+ [DllImport("kernel32.dll",SetLastError=true,CharSet=CharSet.Ansi)] public static extern IntPtr GetProcAddress(IntPtr h,string n);
 }
 '@
 Add-Type $obsLikeNative -ErrorAction SilentlyContinue
-$obsLike=[T0GObsLikeLoader]::LoadLibraryEx($plugin,[IntPtr]::Zero,0)
+$LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR=0x00000100
+$LOAD_LIBRARY_SEARCH_DEFAULT_DIRS=0x00001000
+$obsFlags=$LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR -bor $LOAD_LIBRARY_SEARCH_DEFAULT_DIRS
+Log ("Using exact OBS os_dlopen flags: 0x{0:X8}" -f $obsFlags)
+$obsLike=[T0GObsLikeLoader]::LoadLibraryEx($plugin,[IntPtr]::Zero,$obsFlags)
 if($obsLike -eq [IntPtr]::Zero){
   $e=[Runtime.InteropServices.Marshal]::GetLastWin32Error();$m=(New-Object ComponentModel.Win32Exception($e)).Message
   Log ("OBS-LIKE PLUGIN FAIL ["+$e+"] "+$m)
-  if($e -eq 126){Log "DIFFERENCE FOUND: the plugin needs a DLL search directory that the augmented test supplies but this clean loader does not."}
-  elseif($e -eq 127){Log "DIFFERENCE FOUND: a dependency is found but an imported symbol cannot be resolved in this loader environment."}
-  elseif($e -eq 193){Log "DIFFERENCE FOUND: Windows resolved an incompatible image in this loader environment."}
+  if($e -eq 126){Log "PINPOINT: OBS-style secure DLL search cannot resolve a dependency."}
+  elseif($e -eq 127){Log "PINPOINT: OBS-style loader found a DLL but an imported symbol is missing."}
+  elseif($e -eq 193){Log "PINPOINT: OBS-style loader resolved an incompatible image."}
 } else {
-  Log "OBS-LIKE PLUGIN PASS: Windows accepts the plugin without our added DLL directories."
+  Log "OBS-LIKE PLUGIN PASS: exact OBS os_dlopen behavior accepted the plugin."
+  Log "=== REQUIRED OBS EXPORTS ==="
+  foreach($name in @("obs_module_load","obs_module_set_pointer","obs_module_ver")){
+    $p=[T0GObsLikeLoader]::GetProcAddress($obsLike,$name)
+    if($p -eq [IntPtr]::Zero){Log ("MISSING EXPORT: "+$name)}else{Log ("EXPORT PASS: "+$name)}
+  }
+  foreach($name in @("obs_module_unload","obs_module_description","obs_module_set_locale","obs_module_free_locale")){
+    $p=[T0GObsLikeLoader]::GetProcAddress($obsLike,$name)
+    if($p -eq [IntPtr]::Zero){Log ("OPTIONAL ABSENT: "+$name)}else{Log ("OPTIONAL PASS: "+$name)}
+  }
   [T0GObsLikeLoader]::FreeLibrary($obsLike)|Out-Null
 }
 Log ""
