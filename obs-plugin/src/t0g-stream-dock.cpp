@@ -40,19 +40,21 @@ T0GStreamDock::T0GStreamDock(QWidget *parent) : QDockWidget("T0G Stream Control"
     auto *header = new QHBoxLayout;
     auto *brand = new QLabel("T0G STREAM CONTROL", root);
     brand->setStyleSheet("font-size: 18px; font-weight: 800;");
-    helpButton = new QPushButton("HELP", root);
-    helpButton->setMaximumWidth(70);
-    settingsButton = new QPushButton("SETTINGS", root);
-    settingsButton->setMaximumWidth(100);
+    helpButton = new QPushButton("?", root);
+    helpButton->setFixedSize(34, 30);
+    helpButton->setToolTip("Help and logs");
+    settingsButton = new QPushButton(QString::fromUtf8("⚙"), root);
+    settingsButton->setFixedSize(34, 30);
+    settingsButton->setToolTip("Settings");
     header->addWidget(brand);
     header->addStretch();
     header->addWidget(helpButton);
     header->addWidget(settingsButton);
     layout->addLayout(header);
 
-    auto *subtitle = new QLabel("Twitch + TikTok control from inside OBS", root);
-    subtitle->setStyleSheet("color: palette(mid);");
-    subtitle->setVisible(false);
+    overallStatus = new QLabel(QString::fromUtf8("●  READY TO STREAM"), root);
+    overallStatus->setStyleSheet("font-size: 11px; font-weight: 700; color: #8fd694;");
+    layout->addWidget(overallStatus);
 
     auto *streamInfo = new QGroupBox("STREAM DETAILS", root);
     auto *form = new QFormLayout(streamInfo);
@@ -80,26 +82,29 @@ T0GStreamDock::T0GStreamDock(QWidget *parent) : QDockWidget("T0G Stream Control"
 
     twitchEnabled = new QCheckBox("TWITCH", platforms);
     twitchEnabled->setChecked(true);
-    twitchStatus = new QLabel("Twitch: Ready when OBS is configured", platforms);
+    twitchStatus = new QLabel("Not connected", platforms);
+    twitchStatus->setStyleSheet("margin-left: 24px; color: palette(mid);");
 
     tiktokEnabled = new QCheckBox("TIKTOK", platforms);
     tiktokEnabled->setChecked(true);
-    tiktokStatus = new QLabel("TikTok: Not connected", platforms);
-    auto *verticalStatus = new QLabel("Vertical: checking Aitum...", platforms);
+    tiktokStatus = new QLabel("Not connected", platforms);
+    tiktokStatus->setStyleSheet("margin-left: 24px; color: palette(mid);");
+    verticalStatus = new QLabel(QString::fromUtf8("○  Checking Aitum Vertical..."), platforms);
     QTimer::singleShot(1000, verticalStatus, [this, verticalStatus] {
         verticalStatus->setText(aitumVertical.available()
-            ? "Vertical: Aitum detected - TikTok will use the vertical canvas"
-            : "Vertical: Aitum not detected - TikTok will use OBS fallback output");
+            ? QString::fromUtf8("✓  Aitum Vertical  •  1080 × 1920")
+            : QString::fromUtf8("!  Aitum Vertical not detected  •  OBS fallback"));
     });
 
     auto *tiktokAccount = new QGroupBox("TikTok Account", platforms);
     auto *tiktokAccountLayout = new QFormLayout(tiktokAccount);
+    tiktokAccountLayout->setContentsMargins(10, 10, 10, 10);
     tiktokUsername = new QLabel("Unknown", tiktokAccount);
     tiktokApproval = new QLabel("Unknown", tiktokAccount);
     tiktokCanLive = new QLabel("Unknown", tiktokAccount);
-    tiktokAccountLayout->addRow("Username", tiktokUsername);
-    tiktokAccountLayout->addRow("Status", tiktokApproval);
-    tiktokAccountLayout->addRow("Can Go Live", tiktokCanLive);
+    tiktokAccountLayout->addRow("Account", tiktokUsername);
+    tiktokAccountLayout->addRow("Approval", tiktokApproval);
+    tiktokAccountLayout->addRow("LIVE Access", tiktokCanLive);
 
     auto *loadButtons = new QHBoxLayout;
     loadTikTokWebButton = new QPushButton("CONNECT TIKTOK", platforms);
@@ -124,10 +129,10 @@ T0GStreamDock::T0GStreamDock(QWidget *parent) : QDockWidget("T0G Stream Control"
     updateButton->setToolTip("TikTok uses these fields when T0G creates the LIVE session. Twitch metadata API wiring is the next milestone.");
 
     auto *buttons = new QHBoxLayout;
-    goLiveButton = new QPushButton("GO LIVE", root);
-    goLiveButton->setMinimumHeight(46);
+    goLiveButton = new QPushButton(QString::fromUtf8("●  GO LIVE"), root);
+    goLiveButton->setMinimumHeight(50);
     goLiveButton->setStyleSheet("font-weight: 700;");
-    endLiveButton = new QPushButton("END LIVE", root);
+    endLiveButton = new QPushButton("END STREAM", root);
     endLiveButton->setMinimumHeight(46);
     endLiveButton->setEnabled(false);
     buttons->addWidget(goLiveButton);
@@ -204,13 +209,17 @@ void T0GStreamDock::setBusy(bool value)
 
 void T0GStreamDock::setTikTokStatus(const QString &text)
 {
-    tiktokStatus->setText("TikTok: " + text);
+    tiktokStatus->setText(text);
+    if (overallStatus)
+        overallStatus->setText(text.contains("LIVE") ? QString::fromUtf8("●  STREAMING") : QString::fromUtf8("●  READY TO STREAM"));
     T0GLog::write("TikTok status: " + text);
 }
 
 void T0GStreamDock::setTwitchStatus(const QString &text)
 {
-    twitchStatus->setText("Twitch: " + text);
+    twitchStatus->setText(text);
+    if (overallStatus)
+        overallStatus->setText(text.contains("LIVE") ? QString::fromUtf8("●  STREAMING") : QString::fromUtf8("●  READY TO STREAM"));
     T0GLog::write("Twitch status: " + text);
 }
 
