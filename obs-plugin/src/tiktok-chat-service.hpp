@@ -1,37 +1,43 @@
 #pragma once
 #include <QObject>
 #include <QString>
-#include <QJsonValue>
-#include <initializer_list>
 #include "chat-message.hpp"
-
-class QTimer;
-class QWebSocket;
 
 class TikTokChatService final : public QObject {
     Q_OBJECT
 public:
     explicit TikTokChatService(QObject *parent=nullptr);
+    ~TikTokChatService() override;
     void start(const QString &username);
     void stop();
-    bool connected() const;
+    bool connected() const { return liveConnected; }
 
 signals:
     void messageReceived(ChatMessage message);
     void connectionChanged(bool connected, QString detail);
 
 private:
-    void scheduleReconnect(int delayMs=5000);
-    void handleTextMessage(const QString &text);
-    void processValue(const QJsonValue &value);
-    void processObject(const class QJsonObject &object);
-    static QString normalizedUsername(QString value);
-    static QString firstString(const class QJsonObject &object, std::initializer_list<const char *> keys);
-    static class QJsonObject findUserObject(const class QJsonObject &object);
+    using Runtime = void;
+    using Client = void;
+    using Callback = void (*)(int, const char *, size_t, void *);
 
-    QWebSocket *socket{};
-    QTimer *reconnectTimer{};
+    static void eventCallback(int type, const char *json, size_t len, void *userData);
+    void handleEvent(int type, const QByteArray &json);
+    bool loadLocalConnector();
+    void unloadLocalConnector();
+    static QString normalizedUsername(QString value);
+
+    void *libraryHandle{};
+    Runtime *runtime{};
+    Client *client{};
     QString uniqueId;
-    bool stopping=false;
     bool liveConnected=false;
+
+    Runtime *(*fnInit)(){};
+    void (*fnShutdown)(Runtime *){};
+    Client *(*fnClientNew)(Runtime *, const char *){};
+    void (*fnClientFree)(Client *){};
+    int (*fnConnect)(Client *, Callback, void *){};
+    int (*fnDisconnect)(Client *){};
+    const char *(*fnLastError)(){};
 };
