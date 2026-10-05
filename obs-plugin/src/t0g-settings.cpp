@@ -128,22 +128,6 @@ T0GSettingsDialog::T0GSettingsDialog(const T0GSettings &cfg, QWidget *parent) : 
     accountsLayout->addWidget(tt);
     layout->addWidget(accounts);
 
-    auto *chat = new QGroupBox("Chat Merger", content);
-    auto *chatForm = new QFormLayout(chat);
-    tiktokChatApiKey = new QLineEdit(chat);
-    tiktokChatApiKey->setEchoMode(QLineEdit::Password);
-    tiktokChatApiKey->setPlaceholderText("Stored securely in Windows Credential Manager");
-    tiktokChatApiKey->setText(CredentialStore::read("TikTokChatApiKey"));
-    clearTikTokChatApiKey = new QPushButton("Clear saved TikTok chat API key", chat);
-    auto *chatNote = new QLabel(
-        "Twitch chat uses your connected Twitch account. TikTok LIVE chat uses the configured "
-        "TikTok LIVE WebSocket provider key and runs inside T0G; TikFinity does not need to be open.",
-        chat);
-    chatNote->setWordWrap(true);
-    chatForm->addRow("TikTok Chat API key", tiktokChatApiKey);
-    chatForm->addRow("", clearTikTokChatApiKey);
-    chatForm->addRow("", chatNote);
-    layout->addWidget(chat);
 
     auto *credentials = new QGroupBox("Current Stream Credentials / Fallback", content);
     auto *credentialsForm = new QFormLayout(credentials);
@@ -274,10 +258,6 @@ T0GSettingsDialog::T0GSettingsDialog(const T0GSettings &cfg, QWidget *parent) : 
     connect(tiktokMode, &QComboBox::currentIndexChanged, this, [this] { updateAccountFields(); });
     connect(clearTwitch, &QPushButton::clicked, this, [this] { clearTwitchKey(); });
     connect(clearTikTok, &QPushButton::clicked, this, [this] { clearTikTokKey(); });
-    connect(clearTikTokChatApiKey, &QPushButton::clicked, this, [this] {
-        CredentialStore::remove("TikTokChatApiKey");
-        tiktokChatApiKey->clear();
-    });
     updateAccountFields();
 
     layout->addStretch();
@@ -333,10 +313,6 @@ void T0GSettingsDialog::saveSecrets()
         !CredentialStore::write("TikTokManualKey", tiktokKey->text(), &error))
         QMessageBox::warning(this, "TikTok stream key", error);
 
-    error.clear();
-    if (!tiktokChatApiKey->text().trimmed().isEmpty() &&
-        !CredentialStore::write("TikTokChatApiKey", tiktokChatApiKey->text().trimmed(), &error))
-        QMessageBox::warning(this, "TikTok Chat API key", error);
 }
 
 void T0GSettingsDialog::clearTwitchKey()
