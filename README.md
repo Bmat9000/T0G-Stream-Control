@@ -22,8 +22,13 @@ The Windows build now produces **T0G-Stream-Control-Setup.exe**. Download the la
 
 The installer requires administrator permission because OBS is normally installed under Program Files. Close OBS before installing or updating the plugin.
 
-## Download
-- Download the latest release from [here](../../releases/latest)
+## Download T0G Stream Control
+
+[![Download T0G Stream Control](https://img.shields.io/badge/Download-T0G%20Stream%20Control-blue?style=for-the-badge&logo=windows)](https://github.com/Bmat9000/T0G-TikTok-Live-Tools/releases/download/t0g-stream-control-latest/T0G-Stream-Control-Setup.exe)
+
+**Windows:** [Download the latest T0G Stream Control installer](https://github.com/Bmat9000/T0G-TikTok-Live-Tools/releases/download/t0g-stream-control-latest/T0G-Stream-Control-Setup.exe)
+
+The download link always points to the current installer published by the OBS plugin build.
 
 ## Usage
 1. Run the application.
