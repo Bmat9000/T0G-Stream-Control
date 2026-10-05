@@ -17,10 +17,16 @@ class QListWidget;
 class QTimer;
 
 class T0GStreamDock final : public QDockWidget {
+    Q_OBJECT
 public:
     explicit T0GStreamDock(QWidget *parent = nullptr);
     void triggerGoLive() { startSelectedPlatforms(); }
     void triggerEndLive() { stopSelectedPlatforms(); }
+    QString twitchChatLogin() const { return twitch.loginName(); }
+
+signals:
+    void twitchChatIdentityChanged(QString login);
+    void tiktokChatIdentityChanged(QString username);
 
 private:
     void updateReadyState();
