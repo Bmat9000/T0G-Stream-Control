@@ -209,6 +209,9 @@ void TikTokChatService::handleEvent(int type,const QByteArray &json)
         const QJsonObject streak=o.value("streak").toObject();
         message.giftStreakActive=streak.value("is_active").toBool();
         message.giftStreakFinal=streak.value("is_final").toBool();
+        // Do not flood the feed with every intermediate streak packet. The final
+        // packet contains the accumulated gift count and becomes one event card.
+        if (message.giftStreakActive && !message.giftStreakFinal) return;
         const int total=streak.value("total_gift_count").toInt();
         if (total>0) message.giftCount=total;
         message.message=QString::fromUtf8("🎁 %1 ×%2").arg(message.giftName.isEmpty() ? "Gift" : message.giftName).arg(message.giftCount);
