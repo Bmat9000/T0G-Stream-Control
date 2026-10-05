@@ -14,6 +14,7 @@ class QLabel;
 class QLineEdit;
 class QPushButton;
 class QListWidget;
+class QTimer;
 
 class T0GStreamDock final : public QDockWidget {
 public:
