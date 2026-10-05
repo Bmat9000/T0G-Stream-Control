@@ -34,6 +34,7 @@ T0GSettings T0GSettings::load()
     out.stopTwitch = s.value("platforms/stopTwitch", true).toBool();
     out.stopTikTok = s.value("platforms/stopTikTok", true).toBool();
     out.preferVertical = s.value("video/preferVertical", true).toBool();
+    out.tiktokOutputTestMode = s.value("video/tiktokOutputTestMode", 0).toInt();
     out.defaultTitle = s.value("defaults/title").toString();
     out.defaultGame = s.value("defaults/game", "Rainbow Six Siege").toString();
     out.defaultAudience = s.value("defaults/audience", 0).toInt();
@@ -56,6 +57,7 @@ void T0GSettings::save() const
     s.setValue("platforms/stopTwitch", stopTwitch);
     s.setValue("platforms/stopTikTok", stopTikTok);
     s.setValue("video/preferVertical", preferVertical);
+    s.setValue("video/tiktokOutputTestMode", tiktokOutputTestMode);
     s.setValue("defaults/title", defaultTitle);
     s.setValue("defaults/game", defaultGame);
     s.setValue("defaults/audience", defaultAudience);
@@ -194,6 +196,14 @@ T0GSettingsDialog::T0GSettingsDialog(const T0GSettings &cfg, QWidget *parent) : 
     auto *videoLayout = new QVBoxLayout(video);
     preferVertical = new QCheckBox("Prefer Aitum Vertical output when available", video);
     videoLayout->addWidget(preferVertical);
+    auto *outputTestLabel = new QLabel("TikTok output path (diagnostic)", video);
+    tiktokOutputTestMode = new QComboBox(video);
+    tiktokOutputTestMode->addItems({"Aitum Vertical (normal)", "Direct OBS RTMP Test"});
+    auto *outputTestNote = new QLabel("Direct OBS RTMP Test bypasses Aitum but uses the same Streamlabs LIVE session, RTMP server and key. Use this only while diagnosing TikTok disconnects.", video);
+    outputTestNote->setWordWrap(true);
+    videoLayout->addWidget(outputTestLabel);
+    videoLayout->addWidget(tiktokOutputTestMode);
+    videoLayout->addWidget(outputTestNote);
     layout->addWidget(video);
 
     auto *defaults = new QGroupBox("Defaults", content);
@@ -217,6 +227,7 @@ T0GSettingsDialog::T0GSettingsDialog(const T0GSettings &cfg, QWidget *parent) : 
     startTwitch->setChecked(cfg.startTwitch); startTikTok->setChecked(cfg.startTikTok);
     stopTwitch->setChecked(cfg.stopTwitch); stopTikTok->setChecked(cfg.stopTikTok);
     preferVertical->setChecked(cfg.preferVertical);
+    tiktokOutputTestMode->setCurrentIndex(cfg.tiktokOutputTestMode);
     defaultTitle->setText(cfg.defaultTitle); defaultGame->setText(cfg.defaultGame);
     defaultAudience->setCurrentIndex(cfg.defaultAudience);
 
@@ -322,6 +333,7 @@ T0GSettings T0GSettingsDialog::settings() const
     out.startTwitch = startTwitch->isChecked(); out.startTikTok = startTikTok->isChecked();
     out.stopTwitch = stopTwitch->isChecked(); out.stopTikTok = stopTikTok->isChecked();
     out.preferVertical = preferVertical->isChecked();
+    out.tiktokOutputTestMode = tiktokOutputTestMode->currentIndex();
     out.defaultTitle = defaultTitle->text().trimmed(); out.defaultGame = defaultGame->text().trimmed();
     out.defaultAudience = defaultAudience->currentIndex();
     out.twitchConnectionMode = twitchMode->currentIndex();
