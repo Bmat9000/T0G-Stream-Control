@@ -161,9 +161,15 @@ jobs:
           $pluginDll = Get-ChildItem -Path release -Recurse -Filter "t0g-stream-control.dll" | Select-Object -First 1
           if (-not $pluginDll) { throw "t0g-stream-control.dll was not found in the packaged release." }
 
+          $probeDll = Get-ChildItem -Path . -Recurse -Filter "t0g-loader-probe.dll" |
+            Where-Object { $_.FullName -notmatch '\\.deps\\' } |
+            Select-Object -First 1
+          if (-not $probeDll) { throw "t0g-loader-probe.dll was not produced." }
+
           $payload = "installer-payload"
           New-Item -ItemType Directory -Force -Path "$payload/obs-plugins/64bit" | Out-Null
           Copy-Item -Force $pluginDll.FullName "$payload/obs-plugins/64bit/t0g-stream-control.dll"
+          Copy-Item -Force $probeDll.FullName "$payload/obs-plugins/64bit/t0g-loader-probe.dll"
 
           $pluginData = Get-ChildItem -Path release -Recurse -Directory | Where-Object { $_.Name -eq "data" -and $_.Parent.Name -eq "t0g-stream-control" } | Select-Object -First 1
           if ($pluginData) {
