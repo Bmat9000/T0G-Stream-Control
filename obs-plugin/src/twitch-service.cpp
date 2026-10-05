@@ -38,7 +38,7 @@ void TwitchService::connectDevice(Result done){
         deviceCode=o.value("device_code").toString(); const auto code=o.value("user_code").toString();
         const auto uri=o.value("verification_uri").toString(); pollInterval=qMax(2,o.value("interval").toInt(5));
         if(deviceCode.isEmpty()||uri.isEmpty()){done(false,"Twitch did not return a device authorization code.");return;}
-        pendingConnect=done; emit activationRequired(uri,code); QDesktopServices::openUrl(QUrl(uri));
+        pendingConnect=done; QDesktopServices::openUrl(QUrl(uri)); emit activationRequired(uri,code);
         pollTimer->start(pollInterval*1000);
     });
 }
