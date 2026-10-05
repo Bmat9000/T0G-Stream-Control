@@ -189,10 +189,13 @@ T0GStreamDock::T0GStreamDock(QWidget *parent) : QDockWidget("T0G Stream Control"
     twitch.setClientId(settings.twitchClientId);
     twitch.restore([this](bool ok, QString name) {
         setTwitchStatus(ok ? ("Connected as " + name) : "Ready when OBS is configured");
+        if (ok)
+            emit twitchChatIdentityChanged(twitch.loginName());
     });
     connect(&twitch, &TwitchService::accountChanged, this, [this] {
         const QString name = twitch.displayName();
         setTwitchStatus(name.isEmpty() ? "Ready when OBS is configured" : ("Connected as " + name));
+        emit twitchChatIdentityChanged(twitch.loginName());
     });
     twitchEnabled->setChecked(settings.startTwitch);
     tiktokEnabled->setChecked(settings.startTikTok);
@@ -259,6 +262,8 @@ void T0GStreamDock::refreshTikTokAccount()
             return;
         }
         tiktokUsername->setText(info.username.isEmpty() ? "Unknown" : info.username);
+        if (!info.username.isEmpty())
+            emit tiktokChatIdentityChanged(info.username);
         tiktokApproval->setText(info.status.isEmpty() ? "Unknown" : info.status);
         tiktokCanLive->setText(info.canGoLive ? "True" : "False");
         setTikTokStatus(info.canGoLive ? "Connected through Streamlabs" : "Connected - LIVE unavailable");
