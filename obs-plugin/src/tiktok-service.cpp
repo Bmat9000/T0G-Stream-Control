@@ -15,6 +15,12 @@
 #include <QStandardPaths>
 #include <QUrl>
 #include <QUrlQuery>
+#include <QCryptographicHash>
+#include <QDesktopServices>
+#include <QHostAddress>
+#include <QTcpServer>
+#include <QTcpSocket>
+#include <QRandomGenerator>
 
 namespace {
 constexpr auto kUserAgent =
@@ -101,6 +107,145 @@ QString TikTokService::loadTokenFromStreamlabsDesktop(QString *error)
 
     if (error) *error = "No Streamlabs API token was found. Make sure Streamlabs is signed into TikTok.";
     return {};
+}
+
+
+void TikTokService::loadTokenFromWeb(std::function<void(bool, QString, QString)> done)
+{
+    auto *server = new QTcpServer(this);
+    if (!server->listen(QHostAddress::LocalHost, 0)) {
+        done(false, {}, "Could not start the local Streamlabs login callback.");
+        server->deleteLater();
+        return;
+    }
+
+    QByteArray random(64, Qt::Uninitialized);
+    for (qsizetype i = 0; i < random.size(); ++i)
+        random[i] = char(QRandomGenerator::global()->generate() & 0xff);
+    const QString verifier = QString::fromLatin1(random.toHex());
+    QByteArray challenge = QCryptographicHash::hash(verifier.toUtf8(), QCryptographicHash::Sha256)
+                               .toBase64(QByteArray::Base64UrlEncoding | QByteArray::OmitTrailingEquals);
+
+    QUrl login("https://streamlabs.com/slobs/login");
+    QUrlQuery q;
+    q.addQueryItem("skip_splash", "true");
+    q.addQueryItem("external", "electron");
+    q.addQueryItem("tiktok", "");
+    q.addQueryItem("force_verify", "");
+    q.addQueryItem("origin", "slobs");
+    q.addQueryItem("port", QString::number(server->serverPort()));
+    q.addQueryItem("code_challenge", QString::fromLatin1(challenge));
+    q.addQueryItem("code_flow", "true");
+    login.setQuery(q);
+
+    connect(server, &QTcpServer::newConnection, this, [this, server, verifier, done = std::move(done)]() mutable {
+        auto *socket = server->nextPendingConnection();
+        connect(socket, &QTcpSocket::readyRead, this, [this, server, socket, verifier, done = std::move(done)]() mutable {
+            const QByteArray request = socket->readAll();
+            const QByteArray firstLine = request.left(request.indexOf("\r\n"));
+            const QList<QByteArray> parts = firstLine.split(' ');
+            QUrl callback(parts.size() > 1 ? QString::fromUtf8(parts[1]) : QString());
+            QUrlQuery params(callback);
+            const QString code = params.queryItemValue("code");
+            const bool success = params.queryItemValue("success") == "true" && !code.isEmpty();
+
+            const QByteArray body = success
+                ? "<h2>Authentication successful. You can close this tab.</h2>"
+                : "<h2>Authentication failed. Return to OBS and try again.</h2>";
+            socket->write("HTTP/1.1 " + QByteArray(success ? "200 OK" : "400 Bad Request") +
+                          "\r\nContent-Type: text/html\r\nContent-Length: " +
+                          QByteArray::number(body.size()) + "\r\nConnection: close\r\n\r\n" + body);
+            socket->disconnectFromHost();
+            server->close();
+            server->deleteLater();
+
+            if (!success) {
+                done(false, {}, "Streamlabs login did not return an authorization code.");
+                return;
+            }
+
+            QUrl url("https://streamlabs.com/api/v5/slobs/auth/data");
+            QUrlQuery exchange;
+            exchange.addQueryItem("code_verifier", verifier);
+            exchange.addQueryItem("code", code);
+            url.setQuery(exchange);
+            QNetworkRequest req(url);
+            req.setRawHeader("User-Agent", kUserAgent);
+            req.setRawHeader("Accept", "*/*");
+            auto *reply = network->get(req);
+            connect(reply, &QNetworkReply::finished, this, [this, reply, done = std::move(done)]() mutable {
+                const QByteArray body = reply->readAll();
+                if (reply->error() != QNetworkReply::NoError) {
+                    const QString err = reply->errorString();
+                    reply->deleteLater();
+                    done(false, {}, err);
+                    return;
+                }
+                const QJsonObject root = QJsonDocument::fromJson(body).object();
+                const QString token = root.value("data").toObject().value("oauth_token").toString();
+                reply->deleteLater();
+                if (!root.value("success").toBool() || token.isEmpty()) {
+                    done(false, {}, "Streamlabs did not return a TikTok OAuth token.");
+                    return;
+                }
+                setToken(token);
+                done(true, token, {});
+            });
+        });
+    });
+
+    QDesktopServices::openUrl(login);
+}
+
+void TikTokService::getAccountInfo(std::function<void(TikTokAccountInfo)> done)
+{
+    if (!hasToken()) {
+        TikTokAccountInfo result; result.error = "TikTok/Streamlabs is not connected."; done(result); return;
+    }
+    QNetworkRequest request(QUrl("https://streamlabs.com/api/v5/slobs/tiktok/info"));
+    applyHeaders(request);
+    auto *reply = network->get(request);
+    connect(reply, &QNetworkReply::finished, this, [reply, done = std::move(done)]() mutable {
+        TikTokAccountInfo result;
+        const QByteArray body = reply->readAll();
+        if (reply->error() != QNetworkReply::NoError) {
+            result.error = reply->errorString();
+        } else {
+            const QJsonObject root = QJsonDocument::fromJson(body).object();
+            result.username = root.value("user").toObject().value("username").toString("Unknown");
+            result.status = root.value("application_status").toObject().value("status").toString("Unknown");
+            result.canGoLive = root.value("can_be_live").toBool(false);
+            result.ok = true;
+        }
+        reply->deleteLater();
+        done(result);
+    });
+}
+
+void TikTokService::searchCategories(const QString &game,
+    std::function<void(bool, QVector<TikTokCategory>, QString)> done)
+{
+    if (!hasToken()) { done(false, {}, "TikTok/Streamlabs is not connected."); return; }
+    if (game.trimmed().isEmpty()) { done(true, {}, {}); return; }
+
+    QUrl url("https://streamlabs.com/api/v5/slobs/tiktok/info");
+    QUrlQuery query; query.addQueryItem("category", game.left(25)); url.setQuery(query);
+    QNetworkRequest request(url); applyHeaders(request);
+    auto *reply = network->get(request);
+    connect(reply, &QNetworkReply::finished, this, [reply, done = std::move(done)]() mutable {
+        QVector<TikTokCategory> out;
+        const QByteArray body = reply->readAll();
+        if (reply->error() != QNetworkReply::NoError) {
+            const QString err=reply->errorString(); reply->deleteLater(); done(false, {}, err); return;
+        }
+        const QJsonArray categories=QJsonDocument::fromJson(body).object().value("categories").toArray();
+        for (const auto &v : categories) {
+            const auto o=v.toObject();
+            out.push_back({o.value("full_name").toString(), o.value("game_mask_id").toString()});
+        }
+        out.push_back({"Other", ""});
+        reply->deleteLater(); done(true, out, {});
+    });
 }
 
 void TikTokService::resolveCategory(const QString &game,
