@@ -15,6 +15,7 @@
 #include <QMessageBox>
 #include <QPushButton>
 #include <QSettings>
+#include <QScrollArea>
 #include <QVBoxLayout>
 
 namespace {
@@ -70,9 +71,17 @@ T0GSettingsDialog::T0GSettingsDialog(const T0GSettings &cfg, QWidget *parent) : 
 {
     setWindowTitle("T0G Stream Control Settings");
     setMinimumWidth(520);
-    auto *layout = new QVBoxLayout(this);
+    resize(620, 700);
 
-    auto *accounts = new QGroupBox("Accounts / Connection", this);
+    auto *dialogLayout = new QVBoxLayout(this);
+    auto *scrollArea = new QScrollArea(this);
+    scrollArea->setWidgetResizable(true);
+    scrollArea->setFrameShape(QFrame::NoFrame);
+
+    auto *content = new QWidget(scrollArea);
+    auto *layout = new QVBoxLayout(content);
+
+    auto *accounts = new QGroupBox("Accounts / Connection", content);
     auto *accountsLayout = new QVBoxLayout(accounts);
 
     auto *tw = new QGroupBox("Twitch", accounts);
@@ -119,7 +128,7 @@ T0GSettingsDialog::T0GSettingsDialog(const T0GSettings &cfg, QWidget *parent) : 
     accountsLayout->addWidget(tt);
     layout->addWidget(accounts);
 
-    auto *credentials = new QGroupBox("Current Stream Credentials / Fallback", this);
+    auto *credentials = new QGroupBox("Current Stream Credentials / Fallback", content);
     auto *credentialsForm = new QFormLayout(credentials);
 
     liveTikTokServer = new QLineEdit(credentials);
@@ -161,7 +170,7 @@ T0GSettingsDialog::T0GSettingsDialog(const T0GSettings &cfg, QWidget *parent) : 
             [this] { toggleSecret(liveTikTokKey, showLiveTikTokKey); });
     refreshLiveCredentials();
 
-    auto *general = new QGroupBox("General", this);
+    auto *general = new QGroupBox("General", content);
     auto *generalLayout = new QVBoxLayout(general);
     autoLoadTikTok = new QCheckBox("Automatically load TikTok login from Streamlabs when OBS starts", general);
     rememberStreamInfo = new QCheckBox("Remember last stream title, game and audience", general);
@@ -171,7 +180,7 @@ T0GSettingsDialog::T0GSettingsDialog(const T0GSettings &cfg, QWidget *parent) : 
     generalLayout->addWidget(confirmBeforeEnd);
     layout->addWidget(general);
 
-    auto *platforms = new QGroupBox("GO LIVE / END LIVE behavior", this);
+    auto *platforms = new QGroupBox("GO LIVE / END LIVE behavior", content);
     auto *platformLayout = new QVBoxLayout(platforms);
     startTwitch = new QCheckBox("GO LIVE starts Twitch when Twitch is selected", platforms);
     startTikTok = new QCheckBox("GO LIVE starts TikTok when TikTok is selected", platforms);
@@ -181,13 +190,13 @@ T0GSettingsDialog::T0GSettingsDialog(const T0GSettings &cfg, QWidget *parent) : 
     platformLayout->addWidget(stopTwitch); platformLayout->addWidget(stopTikTok);
     layout->addWidget(platforms);
 
-    auto *video = new QGroupBox("TikTok video", this);
+    auto *video = new QGroupBox("TikTok video", content);
     auto *videoLayout = new QVBoxLayout(video);
     preferVertical = new QCheckBox("Prefer Aitum Vertical output when available", video);
     videoLayout->addWidget(preferVertical);
     layout->addWidget(video);
 
-    auto *defaults = new QGroupBox("Defaults", this);
+    auto *defaults = new QGroupBox("Defaults", content);
     auto *form = new QFormLayout(defaults);
     defaultTitle = new QLineEdit(defaults); defaultGame = new QLineEdit(defaults);
     defaultAudience = new QComboBox(defaults); defaultAudience->addItems({"Everyone", "Mature / 18+"});
@@ -238,10 +247,14 @@ T0GSettingsDialog::T0GSettingsDialog(const T0GSettings &cfg, QWidget *parent) : 
     connect(clearTikTok, &QPushButton::clicked, this, [this] { clearTikTokKey(); });
     updateAccountFields();
 
+    layout->addStretch();
+    scrollArea->setWidget(content);
+    dialogLayout->addWidget(scrollArea);
+
     auto *buttons = new QDialogButtonBox(QDialogButtonBox::Save | QDialogButtonBox::Cancel, this);
     connect(buttons, &QDialogButtonBox::accepted, this, [this] { saveSecrets(); accept(); });
     connect(buttons, &QDialogButtonBox::rejected, this, &QDialog::reject);
-    layout->addWidget(buttons);
+    dialogLayout->addWidget(buttons);
 }
 
 void T0GSettingsDialog::refreshLiveCredentials()
