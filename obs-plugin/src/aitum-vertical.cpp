@@ -59,43 +59,92 @@ bool AitumVertical::available() const
 
 bool AitumVertical::configureTikTok(const QString &server, const QString &key, QString *error)
 {
-    T0GLog::write("Aitum: configuring existing output '" + QString(outputName()) + "' (stream key hidden)");
-    // Update only the existing T0G TikTok output. Using Aitum's
-    // get/set_stream_settings procedures permanently flips its
-    // disable_stream_settings flag for this OBS session and displays the
-    // misleading "Aitum Multistream" warning.
+    T0GLog::write("Aitum: refreshing T0G TikTok credentials for this LIVE (stream key hidden)");
+
+    // First require the one-time user-created output. We deliberately do not
+    // create outputs through this API because malformed/incomplete entries can
+    // destabilize Vertical Canvas.
     obs_output_t *output = getOutput(outputName());
     if (!output) {
-        T0GLog::write("Aitum: T0G TikTok output NOT FOUND; unsafe auto-create disabled", LOG_ERROR);
+        T0GLog::write("Aitum: T0G TikTok output NOT FOUND; open HELP > Aitum TikTok Setup Guide", LOG_ERROR);
         if (error)
-            *error = "T0G TikTok output was not found in Aitum Vertical. Create an output named 'T0G TikTok' once in Vertical Settings, then T0G will update and control it safely.";
+            *error = "T0G TikTok output was not found in Aitum Vertical. Open T0G > HELP > Aitum TikTok Setup Guide.";
         return false;
     }
-
-    obs_service_t *service = obs_output_get_service(output);
-    if (!service) {
-        T0GLog::write("Aitum: output found but has NO streaming service", LOG_ERROR);
-        obs_output_release(output);
-        if (error)
-            *error = "T0G TikTok output does not have a streaming service.";
-        return false;
-    }
-
-    T0GLog::write(QString("Aitum: output found; active=%1 service_id=%2").arg(obs_output_active(output) ? "true" : "false").arg(QString::fromUtf8(obs_service_get_id(service))));
-    obs_data_t *settings = obs_service_get_settings(service);
-    if (!settings)
-        settings = obs_data_create();
-
-    const QString oldServer = QString::fromUtf8(obs_data_get_string(settings, "server"));
-    T0GLog::write("Aitum: updating RTMP server from " + (oldServer.isEmpty() ? QString("<empty>") : oldServer) + " to " + server + "; key hidden");
-    obs_data_set_string(settings, "server", server.toUtf8().constData());
-    obs_data_set_string(settings, "key", key.toUtf8().constData());
-    obs_service_update(service, settings);
-
-    obs_data_release(settings);
-    // obs_output_get_service() returns a borrowed pointer. Do not release it.
     obs_output_release(output);
-    T0GLog::write("Aitum: service credentials updated successfully");
+
+    // Aitum keeps its own StreamServer copy of server/key. Updating only the
+    // OBS service is not enough: StartStreamOutput() rebuilds the service from
+    // that cached copy. Use Aitum's settings API to refresh the EXISTING entry
+    // before every start, preserving every other output and all of its settings.
+    calldata_t getCd;
+    calldata_init(&getCd);
+    calldata_set_int(&getCd, "width", kVerticalWidth);
+    calldata_set_int(&getCd, "height", kVerticalHeight);
+    if (!callProc("aitum_vertical_get_stream_settings", &getCd)) {
+        calldata_free(&getCd);
+        T0GLog::write("Aitum: could not read stream settings for credential refresh", LOG_ERROR);
+        if (error) *error = "T0G could not read Aitum Vertical stream settings.";
+        return false;
+    }
+
+    auto *outputs = static_cast<obs_data_array_t *>(calldata_ptr(&getCd, "outputs"));
+    calldata_free(&getCd);
+    if (!outputs) {
+        T0GLog::write("Aitum: stream settings returned no outputs", LOG_ERROR);
+        if (error) *error = "Aitum Vertical returned no stream outputs.";
+        return false;
+    }
+
+    bool found = false;
+    const size_t count = obs_data_array_count(outputs);
+    for (size_t i = 0; i < count; ++i) {
+        obs_data_t *item = obs_data_array_item(outputs, i);
+        if (!item)
+            continue;
+        const QString name = QString::fromUtf8(obs_data_get_string(item, "name"));
+        if (name == QString::fromUtf8(outputName())) {
+            obs_data_set_string(item, "stream_server", server.toUtf8().constData());
+            obs_data_set_string(item, "stream_key", key.toUtf8().constData());
+            obs_data_set_bool(item, "enabled", true);
+            found = true;
+            T0GLog::write("Aitum: found T0G TikTok settings; replaced server + current LIVE key (key hidden)");
+        }
+        obs_data_release(item);
+    }
+
+    if (!found) {
+        obs_data_array_release(outputs);
+        T0GLog::write("Aitum: output existed but settings entry named T0G TikTok was not found", LOG_ERROR);
+        if (error) *error = "Aitum's T0G TikTok settings entry could not be found. Open T0G > HELP > Aitum TikTok Setup Guide.";
+        return false;
+    }
+
+    calldata_t setCd;
+    calldata_init(&setCd);
+    calldata_set_int(&setCd, "width", kVerticalWidth);
+    calldata_set_int(&setCd, "height", kVerticalHeight);
+    calldata_set_ptr(&setCd, "outputs", outputs);
+    const bool applied = callProc("aitum_vertical_set_stream_settings", &setCd);
+    calldata_free(&setCd);
+    obs_data_array_release(outputs);
+
+    if (!applied) {
+        T0GLog::write("Aitum: failed to apply refreshed LIVE credentials", LOG_ERROR);
+        if (error) *error = "Aitum Vertical rejected the refreshed TikTok credentials.";
+        return false;
+    }
+
+    // Confirm the output survived the update. Never read/log the key here.
+    output = getOutput(outputName());
+    if (!output) {
+        T0GLog::write("Aitum: output missing after credential refresh", LOG_ERROR);
+        if (error) *error = "Aitum Vertical lost the T0G TikTok output while refreshing credentials.";
+        return false;
+    }
+    obs_output_release(output);
+
+    T0GLog::write("Aitum: current LIVE server/key synchronized successfully; ready to start");
     return true;
 }
 
