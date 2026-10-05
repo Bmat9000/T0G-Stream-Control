@@ -64,7 +64,6 @@ private:
     QLineEdit *twitchServer{};
     QLineEdit *twitchKey{};
     QPushButton *clearTwitch{};
-    QLineEdit *twitchClientId{};
     QLabel *twitchAccountStatus{};
     QPushButton *connectTwitch{};
     QPushButton *disconnectTwitch{};
