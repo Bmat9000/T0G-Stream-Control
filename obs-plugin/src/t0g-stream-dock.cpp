@@ -398,7 +398,7 @@ bool T0GStreamDock::startManualTikTok()
         return false;
     }
 
-    usingAitumVertical = settings.preferVertical && aitumVertical.available();
+    usingAitumVertical = settings.tiktokOutputTestMode == 0 && settings.preferVertical && aitumVertical.available();
     if (usingAitumVertical) {
         if (!aitumVertical.configureTikTok(settings.tiktokManualServer, key, &error) ||
             !aitumVertical.startTikTok(&error)) {
@@ -438,7 +438,7 @@ void T0GStreamDock::startTikTok()
                 activeTikTokStreamId = result.streamId;
                 SessionState::setTikTokCredentials(result.server, result.key, result.streamId);
                 QString outputError;
-                usingAitumVertical = settings.preferVertical && aitumVertical.available();
+                usingAitumVertical = settings.tiktokOutputTestMode == 0 && settings.preferVertical && aitumVertical.available();
                 if (usingAitumVertical) {
                     setTikTokStatus("Configuring Aitum Vertical...");
                     if (!aitumVertical.configureTikTok(result.server, result.key, &outputError) ||
@@ -451,12 +451,12 @@ void T0GStreamDock::startTikTok()
                     if (twitchEnabled->isChecked()) setTwitchStatus(obs_frontend_streaming_active() ? "LIVE" : "Starting...");
                     setBusy(false); endLiveButton->setEnabled(true); return;
                 }
-                setTikTokStatus("Configuring OBS fallback output...");
+                setTikTokStatus(settings.tiktokOutputTestMode == 1 ? "Starting Direct OBS RTMP Test..." : "Configuring OBS fallback output...");
                 if (!tiktokOutput.configure(result.server, result.key, &outputError) || !tiktokOutput.start(&outputError)) {
                     setTikTokStatus("Output setup failed - credentials available in Settings");
                     setBusy(false); endLiveButton->setEnabled(true); showTikTokFallbackFailure(outputError); return;
                 }
-                setTikTokStatus("LIVE");
+                setTikTokStatus(settings.tiktokOutputTestMode == 1 ? "LIVE - Direct OBS RTMP Test" : "LIVE");
                 if (twitchEnabled->isChecked()) setTwitchStatus(obs_frontend_streaming_active() ? "LIVE" : "Starting...");
                 setBusy(false); endLiveButton->setEnabled(true);
             });
@@ -489,7 +489,7 @@ void T0GStreamDock::startTikTok()
                     SessionState::setTikTokCredentials(result.server, result.key, result.streamId);
 
                     QString outputError;
-                    usingAitumVertical = settings.preferVertical && aitumVertical.available();
+                    usingAitumVertical = settings.tiktokOutputTestMode == 0 && settings.preferVertical && aitumVertical.available();
 
                     if (usingAitumVertical) {
                         setTikTokStatus("Configuring Aitum Vertical...");
@@ -511,7 +511,7 @@ void T0GStreamDock::startTikTok()
                         return;
                     }
 
-                    setTikTokStatus("Configuring OBS fallback output...");
+                    setTikTokStatus(settings.tiktokOutputTestMode == 1 ? "Starting Direct OBS RTMP Test..." : "Configuring OBS fallback output...");
                     if (!tiktokOutput.configure(result.server, result.key, &outputError)) {
                         setTikTokStatus("Output setup failed - credentials available in Settings");
                         setBusy(false);
@@ -528,7 +528,7 @@ void T0GStreamDock::startTikTok()
                         return;
                     }
 
-                    setTikTokStatus("LIVE");
+                    setTikTokStatus(settings.tiktokOutputTestMode == 1 ? "LIVE - Direct OBS RTMP Test" : "LIVE");
                     if (twitchEnabled->isChecked())
                         setTwitchStatus(obs_frontend_streaming_active() ? "LIVE" : "Starting...");
                     setBusy(false);
