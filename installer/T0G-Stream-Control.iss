@@ -13,7 +13,7 @@ AppId={{6B7C54C4-70C7-4A31-B47D-49C620C5B6E9}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
 AppPublisher={#MyAppPublisher}
-DefaultDirName={autopf}\obs-studio
+DefaultDirName={commonpf64}\obs-studio
 DisableDirPage=no
 UsePreviousAppDir=no
 PrivilegesRequired=admin
@@ -39,7 +39,7 @@ procedure InitializeWizard();
 var
   DefaultOBS: String;
 begin
-  DefaultOBS := ExpandConstant('{autopf}\obs-studio');
+  DefaultOBS := ExpandConstant('{commonpf64}\obs-studio');
   if IsOBSInstall(DefaultOBS) then
     WizardForm.DirEdit.Text := DefaultOBS;
 end;
