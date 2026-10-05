@@ -53,6 +53,84 @@ jobs:
           config: RelWithDebInfo
           package: false
 
+      - name: Diagnose plugin DLL before installer
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $dll = Get-ChildItem -Path release -Recurse -Filter "t0g-stream-control.dll" | Select-Object -First 1
+          if (-not $dll) { throw "t0g-stream-control.dll was not produced." }
+
+          Write-Host "::group::T0G DLL identity"
+          Write-Host "DLL: $($dll.FullName)"
+          Write-Host "Size: $($dll.Length) bytes"
+          Get-FileHash $dll.FullName -Algorithm SHA256 | Format-List
+          Write-Host "::endgroup::"
+
+          $dumpbin = Get-ChildItem "${env:ProgramFiles}\Microsoft Visual Studio\2022\Enterprise\VC\Tools\MSVC" -Recurse -Filter dumpbin.exe -ErrorAction SilentlyContinue |
+            Where-Object { $_.FullName -match '\\Hostx64\\x64\\dumpbin.exe        shell: pwsh
+        run: |
+          $pluginDll = Get-ChildItem -Path release -Recurse -Filter "t0g-stream-control.dll" | Select-Object -First 1
+          if (-not $pluginDll) { throw "t0g-stream-control.dll was not found in the packaged release." }
+
+          $payload = "installer-payload"
+          New-Item -ItemType Directory -Force -Path "$payload/obs-plugins/64bit" | Out-Null
+          Copy-Item -Force $pluginDll.FullName "$payload/obs-plugins/64bit/t0g-stream-control.dll"
+
+          $pluginData = Get-ChildItem -Path release -Recurse -Directory | Where-Object { $_.Name -eq "data" -and $_.Parent.Name -eq "t0g-stream-control" } | Select-Object -First 1
+          if ($pluginData) {
+            New-Item -ItemType Directory -Force -Path "$payload/data/obs-plugins/t0g-stream-control" | Out-Null
+            Copy-Item -Recurse -Force "$($pluginData.FullName)/*" "$payload/data/obs-plugins/t0g-stream-control/"
+          }
+
+          choco install innosetup --no-progress -y
+          & "${env:ProgramFiles(x86)}\\Inno Setup 6\\ISCC.exe" /DPluginPayload="$((Resolve-Path $payload).Path)" /DInstallerOutput="$((Resolve-Path release).Path)" "t0g-source/installer/T0G-Stream-Control.iss"
+          if ($LASTEXITCODE -ne 0) { throw "Inno Setup failed with exit code $LASTEXITCODE" }
+
+      - name: Upload T0G OBS plugin
+        uses: actions/upload-artifact@v4
+        with:
+          name: T0G-Stream-Control-Windows
+          path: |
+            release/T0G-Stream-Control-Setup.exe
+            release/**/*.zip
+          if-no-files-found: error
+
+      - name: Publish latest installer release
+        if: github.event_name == 'workflow_dispatch'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: t0g-stream-control-latest
+          name: T0G Stream Control - Latest
+          prerelease: false
+          make_latest: true
+          files: release/T0G-Stream-Control-Setup.exe
+          body: |
+            Automatic latest Windows build of T0G Stream Control.
+
+            Download **T0G-Stream-Control-Setup.exe**, close OBS, and run the installer.
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+ } | Sort-Object FullName -Descending | Select-Object -First 1
+          if (-not $dumpbin) { throw "dumpbin.exe not found on the Windows runner." }
+
+          Write-Host "::group::T0G DLL headers"
+          & $dumpbin.FullName /headers $dll.FullName
+          if ($LASTEXITCODE -ne 0) { throw "dumpbin /headers failed." }
+          Write-Host "::endgroup::"
+
+          Write-Host "::group::T0G DLL imports"
+          & $dumpbin.FullName /dependents $dll.FullName
+          if ($LASTEXITCODE -ne 0) { throw "dumpbin /dependents failed." }
+          Write-Host "::endgroup::"
+
+          Write-Host "::group::T0G OBS module exports"
+          $exports = (& $dumpbin.FullName /exports $dll.FullName | Out-String)
+          Write-Host $exports
+          foreach ($required in @("obs_module_load", "obs_module_unload", "obs_module_ver", "obs_module_set_pointer")) {
+            if ($exports -notmatch [regex]::Escape($required)) { throw "Required OBS export '$required' is missing." }
+          }
+          Write-Host "::endgroup::"
+          Write-Host "T0G DLL diagnostics passed."
       - name: Create one-click Windows installer
         shell: pwsh
         run: |
