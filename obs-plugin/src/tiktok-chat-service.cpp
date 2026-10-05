@@ -32,21 +32,6 @@ QString avatarFromUser(const QJsonObject &user)
     return {};
 }
 
-void walkForChat(TikTokChatService *service, const QJsonValue &value)
-{
-    if (value.isObject()) {
-        service->metaObject(); // keep QObject type complete for MSVC
-        const QJsonObject object = value.toObject();
-        service->processObject(object);
-        for (auto it = object.constBegin(); it != object.constEnd(); ++it) {
-            if (it.value().isObject() || it.value().isArray())
-                walkForChat(service, it.value());
-        }
-    } else if (value.isArray()) {
-        for (const QJsonValue &item : value.toArray())
-            walkForChat(service, item);
-    }
-}
 }
 
 TikTokChatService::TikTokChatService(QObject *parent) : QObject(parent)
@@ -76,15 +61,16 @@ TikTokChatService::TikTokChatService(QObject *parent) : QObject(parent)
         }
 
         const auto code = socket->closeCode();
+        const int codeValue = static_cast<int>(code);
         const QString reason = socket->closeReason();
-        if (code == 4401 || code == 4403) {
+        if (codeValue == 4401 || codeValue == 4403) {
             emit connectionChanged(false, "TikTok chat API key rejected");
             T0GLog::write("Chat Merger: TikTok chat authorization rejected; check API key");
             stopping = true;
             return;
         }
 
-        if (code == 4404) {
+        if (codeValue == 4404) {
             emit connectionChanged(false, "Waiting for TikTok LIVE");
             T0GLog::write("Chat Merger: TikTok account is not live yet; retrying");
             scheduleReconnect(5000);
@@ -93,7 +79,7 @@ TikTokChatService::TikTokChatService(QObject *parent) : QObject(parent)
 
         emit connectionChanged(false, "Reconnecting...");
         T0GLog::write(QString("Chat Merger: TikTok chat disconnected code=%1 reason=%2")
-                      .arg(static_cast<int>(code)).arg(reason.isEmpty() ? "<none>" : reason));
+                      .arg(codeValue).arg(reason.isEmpty() ? "<none>" : reason));
         scheduleReconnect();
     });
 
@@ -244,6 +230,21 @@ void TikTokChatService::processObject(const QJsonObject &object)
         emit messageReceived(message);
 }
 
+void TikTokChatService::processValue(const QJsonValue &value)
+{
+    if (value.isObject()) {
+        const QJsonObject object = value.toObject();
+        processObject(object);
+        for (auto it = object.constBegin(); it != object.constEnd(); ++it) {
+            if (it.value().isObject() || it.value().isArray())
+                processValue(it.value());
+        }
+    } else if (value.isArray()) {
+        for (const QJsonValue &item : value.toArray())
+            processValue(item);
+    }
+}
+
 void TikTokChatService::handleTextMessage(const QString &text)
 {
     QJsonParseError error{};
@@ -254,7 +255,7 @@ void TikTokChatService::handleTextMessage(const QString &text)
     }
 
     if (doc.isObject())
-        walkForChat(this, doc.object());
+        processValue(doc.object());
     else if (doc.isArray())
-        walkForChat(this, doc.array());
+        processValue(doc.array());
 }
