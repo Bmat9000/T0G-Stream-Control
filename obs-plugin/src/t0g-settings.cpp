@@ -20,6 +20,7 @@
 
 namespace {
 QSettings store() { return QSettings("T0G", "T0G Stream Control"); }
+constexpr const char *kT0GTwitchClientId = "91gdjfnblk3jb7e2wglcu6hvrv0mi2";
 }
 
 T0GSettings T0GSettings::load()
@@ -40,7 +41,7 @@ T0GSettings T0GSettings::load()
     out.defaultAudience = s.value("defaults/audience", 0).toInt();
     out.twitchConnectionMode = s.value("accounts/twitchMode", 0).toInt();
     out.twitchManualServer = s.value("accounts/twitchServer", "rtmp://live.twitch.tv/app").toString();
-    out.twitchClientId = s.value("accounts/twitchClientId").toString();
+    out.twitchClientId = QString::fromUtf8(kT0GTwitchClientId);
     out.tiktokConnectionMode = s.value("accounts/tiktokMode", 0).toInt();
     out.tiktokManualServer = s.value("accounts/tiktokServer").toString();
     return out;
@@ -63,7 +64,7 @@ void T0GSettings::save() const
     s.setValue("defaults/audience", defaultAudience);
     s.setValue("accounts/twitchMode", twitchConnectionMode);
     s.setValue("accounts/twitchServer", twitchManualServer);
-    s.setValue("accounts/twitchClientId", twitchClientId);
+    s.remove("accounts/twitchClientId");
     s.setValue("accounts/tiktokMode", tiktokConnectionMode);
     s.setValue("accounts/tiktokServer", tiktokManualServer);
     s.sync();
@@ -95,8 +96,6 @@ T0GSettingsDialog::T0GSettingsDialog(const T0GSettings &cfg, QWidget *parent) : 
     twitchKey->setEchoMode(QLineEdit::Password);
     twitchKey->setPlaceholderText("Stored securely in Windows Credential Manager");
     clearTwitch = new QPushButton("Clear saved key", tw);
-    twitchClientId = new QLineEdit(tw);
-    twitchClientId->setPlaceholderText("Twitch Developer Application Client ID");
     twitchAccountStatus = new QLabel("Not connected", tw);
     connectTwitch = new QPushButton("Connect Twitch", tw);
     disconnectTwitch = new QPushButton("Disconnect", tw);
@@ -106,7 +105,6 @@ T0GSettingsDialog::T0GSettingsDialog(const T0GSettings &cfg, QWidget *parent) : 
     twAccountButtonsLayout->addWidget(connectTwitch);
     twAccountButtonsLayout->addWidget(disconnectTwitch);
     twForm->addRow("Mode", twitchMode);
-    twForm->addRow("Twitch Client ID", twitchClientId);
     twForm->addRow("Account", twitchAccountStatus);
     twForm->addRow("", twAccountButtons);
     twForm->addRow("RTMP server", twitchServer);
@@ -215,7 +213,6 @@ T0GSettingsDialog::T0GSettingsDialog(const T0GSettings &cfg, QWidget *parent) : 
     layout->addWidget(defaults);
 
     twitchMode->setCurrentIndex(cfg.twitchConnectionMode);
-    twitchClientId->setText(cfg.twitchClientId);
     twitchServer->setText(cfg.twitchManualServer);
     twitchKey->setText(CredentialStore::read("TwitchManualKey"));
     tiktokMode->setCurrentIndex(cfg.tiktokConnectionMode);
@@ -242,7 +239,7 @@ T0GSettingsDialog::T0GSettingsDialog(const T0GSettings &cfg, QWidget *parent) : 
         twitchAccountStatus->setText(ok ? ("Connected as " + name) : "Not connected");
     });
     connect(connectTwitch, &QPushButton::clicked, this, [this] {
-        twitchService->setClientId(twitchClientId->text().trimmed());
+        twitchService->setClientId(QString::fromUtf8(kT0GTwitchClientId));
         twitchService->connectDevice([this](bool ok, QString msg) {
             twitchAccountStatus->setText(ok ? ("Connected as " + msg) : "Not connected");
             if (!ok) QMessageBox::warning(this, "Twitch Login", msg);
@@ -338,7 +335,7 @@ T0GSettings T0GSettingsDialog::settings() const
     out.defaultAudience = defaultAudience->currentIndex();
     out.twitchConnectionMode = twitchMode->currentIndex();
     out.twitchManualServer = twitchServer->text().trimmed();
-    out.twitchClientId = twitchClientId->text().trimmed();
+    out.twitchClientId = QString::fromUtf8(kT0GTwitchClientId);
     out.tiktokConnectionMode = tiktokMode->currentIndex();
     out.tiktokManualServer = tiktokServer->text().trimmed();
     return out;
