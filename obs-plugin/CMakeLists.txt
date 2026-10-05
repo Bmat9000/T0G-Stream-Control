@@ -33,6 +33,10 @@ add_library(t0g-stream-control MODULE
   src/tiktok-service.hpp
   src/tiktok-output.cpp
   src/tiktok-output.hpp
+  src/chat-message.hpp
+  src/chat-feed.hpp
+  src/chat-merger-dock.cpp
+  src/chat-merger-dock.hpp
 )
 
 target_link_libraries(t0g-stream-control PRIVATE
