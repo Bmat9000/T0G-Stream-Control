@@ -44,6 +44,89 @@ obs_output_t *getOutput(const QString &name)
     T0GLog::write("Aitum: 1080x1920 lookup failed; trying wildcard canvas as compatibility fallback", LOG_WARNING);
     return getOutputForCanvas(name, 0, 0);
 }
+
+bool ensureManagedOutput(const QString &server, const QString &key, QString *error)
+{
+    T0GLog::write("Aitum: T0G TikTok is missing; asking Vertical Canvas to create/manage it through stream settings");
+
+    calldata_t getCd;
+    calldata_init(&getCd);
+    calldata_set_int(&getCd, "width", kVerticalWidth);
+    calldata_set_int(&getCd, "height", kVerticalHeight);
+    if (!callProc("aitum_vertical_get_stream_settings", &getCd)) {
+        calldata_free(&getCd);
+        T0GLog::write("Aitum: get_stream_settings procedure FAILED", LOG_ERROR);
+        if (error) *error = "Aitum Vertical did not expose its stream settings.";
+        return false;
+    }
+
+    auto *existing = static_cast<obs_data_array_t *>(calldata_ptr(&getCd, "outputs"));
+    calldata_free(&getCd);
+    if (!existing) {
+        T0GLog::write("Aitum: get_stream_settings returned no output array", LOG_ERROR);
+        if (error) *error = "Aitum Vertical returned no stream output settings.";
+        return false;
+    }
+
+    obs_data_array_t *updated = obs_data_array_create();
+    bool replaced = false;
+    const size_t count = obs_data_array_count(existing);
+    T0GLog::write(QString("Aitum: current configured stream outputs=%1").arg(count));
+
+    for (size_t i = 0; i < count; ++i) {
+        obs_data_t *item = obs_data_array_item(existing, i);
+        if (!item) continue;
+        const QString name = QString::fromUtf8(obs_data_get_string(item, "name"));
+        T0GLog::write(QString("Aitum: existing output[%1] name='%2' enabled=%3").arg(i).arg(name).arg(obs_data_get_bool(item, "enabled") ? "true" : "false"));
+        if (name == QString::fromUtf8(AitumVertical::outputName())) {
+            obs_data_set_string(item, "stream_server", server.toUtf8().constData());
+            obs_data_set_string(item, "stream_key", key.toUtf8().constData());
+            obs_data_set_bool(item, "enabled", true);
+            replaced = true;
+        }
+        obs_data_array_push_back(updated, item);
+        obs_data_release(item);
+    }
+
+    if (!replaced) {
+        obs_data_t *item = obs_data_create();
+        obs_data_set_string(item, "name", AitumVertical::outputName());
+        obs_data_set_string(item, "stream_server", server.toUtf8().constData());
+        obs_data_set_string(item, "stream_key", key.toUtf8().constData());
+        obs_data_set_bool(item, "enabled", true);
+        obs_data_array_push_back(updated, item);
+        obs_data_release(item);
+        T0GLog::write("Aitum: appended managed output 'T0G TikTok' (key hidden)");
+    }
+
+    obs_data_array_release(existing);
+
+    calldata_t setCd;
+    calldata_init(&setCd);
+    calldata_set_int(&setCd, "width", kVerticalWidth);
+    calldata_set_int(&setCd, "height", kVerticalHeight);
+    calldata_set_ptr(&setCd, "outputs", updated);
+    const bool ok = callProc("aitum_vertical_set_stream_settings", &setCd);
+    calldata_free(&setCd);
+    obs_data_array_release(updated);
+
+    if (!ok) {
+        T0GLog::write("Aitum: set_stream_settings procedure FAILED", LOG_ERROR);
+        if (error) *error = "Aitum Vertical rejected the managed T0G TikTok output.";
+        return false;
+    }
+
+    T0GLog::write("Aitum: managed output settings applied; verifying T0G TikTok exists");
+    obs_output_t *verify = getOutput(QString::fromUtf8(AitumVertical::outputName()));
+    if (!verify) {
+        T0GLog::write("Aitum: T0G TikTok still missing after set_stream_settings", LOG_ERROR);
+        if (error) *error = "Aitum Vertical did not create the T0G TikTok output.";
+        return false;
+    }
+    obs_output_release(verify);
+    T0GLog::write("Aitum: T0G TikTok created successfully");
+    return true;
+}
 }
 
 bool AitumVertical::available() const
@@ -65,10 +148,15 @@ bool AitumVertical::configureTikTok(const QString &server, const QString &key, Q
     // misleading "Aitum Multistream" warning.
     obs_output_t *output = getOutput(outputName());
     if (!output) {
-        T0GLog::write("Aitum: T0G TikTok output NOT FOUND after portrait + wildcard lookup", LOG_ERROR);
-        if (error)
-            *error = "T0G TikTok output was not found in Aitum Vertical. Add an output named 'T0G TikTok' once in Vertical Settings.";
-        return false;
+        T0GLog::write("Aitum: T0G TikTok output NOT FOUND; auto-create path starting", LOG_WARNING);
+        if (!ensureManagedOutput(server, key, error))
+            return false;
+        output = getOutput(outputName());
+        if (!output) {
+            T0GLog::write("Aitum: auto-create reported success but output lookup still failed", LOG_ERROR);
+            if (error) *error = "T0G created the Aitum output settings, but Aitum did not expose the new output.";
+            return false;
+        }
     }
 
     obs_service_t *service = obs_output_get_service(output);
