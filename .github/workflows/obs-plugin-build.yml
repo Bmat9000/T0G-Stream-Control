@@ -123,19 +123,25 @@ jobs:
           if (-not $frontendDll) { throw "obs-frontend-api.dll could not be located in the build workspace." }
 
           $runtimeDirs = @($obsDll.DirectoryName, $frontendDll.DirectoryName) | Select-Object -Unique
+
+          # The OBS dependency bundle contains more than Qt (for example curl/SSL and
+          # other transitive DLLs used by obs.dll). Add every dependency bin folder,
+          # not just the directory containing Qt6Core.dll.
+          $dependencyBinDirs = Get-ChildItem -Path ".deps" -Recurse -Filter "*.dll" -ErrorAction SilentlyContinue |
+            ForEach-Object { $_.DirectoryName } |
+            Select-Object -Unique
+          $runtimeDirs += $dependencyBinDirs
+          $runtimeDirs = $runtimeDirs | Select-Object -Unique
+
           foreach ($dir in $runtimeDirs) {
             Write-Host "Adding runtime DLL directory: $dir"
             $env:PATH = "$dir;$env:PATH"
           }
 
-          $qtDll = Get-ChildItem -Path . -Recurse -Filter "Qt6Core.dll" -ErrorAction SilentlyContinue | Select-Object -First 1
-          if ($qtDll) {
-            Write-Host "Adding Qt runtime DLL directory: $($qtDll.DirectoryName)"
-            $env:PATH = "$($qtDll.DirectoryName);$env:PATH"
-          }
-
-          $LOAD_WITH_ALTERED_SEARCH_PATH = 0x00000008
-          $handle = [T0GNativeLoader]::LoadLibraryEx($dll.FullName, [IntPtr]::Zero, $LOAD_WITH_ALTERED_SEARCH_PATH)
+          # Use normal dependency resolution so PATH is honored for transitive
+          # OBS/Qt dependencies. LOAD_WITH_ALTERED_SEARCH_PATH can bypass the
+          # PATH setup above and produce a misleading error 126 in CI.
+          $handle = [T0GNativeLoader]::LoadLibraryEx($dll.FullName, [IntPtr]::Zero, 0)
           if ($handle -eq [IntPtr]::Zero) {
             $code = [Runtime.InteropServices.Marshal]::GetLastWin32Error()
             $message = (New-Object ComponentModel.Win32Exception($code)).Message
