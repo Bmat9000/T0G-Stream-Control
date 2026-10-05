@@ -4,11 +4,15 @@
 #include <windows.h>
 #include <cstdio>
 #include "t0g-stream-dock.hpp"
+#include "chat-merger-dock.hpp"
+#include "chat-feed.hpp"
 
 OBS_DECLARE_MODULE()
 OBS_MODULE_USE_DEFAULT_LOCALE("t0g-stream-control", "en-US")
 
 static T0GStreamDock *g_dock = nullptr;
+static ChatMergerDock *g_chatDock = nullptr;
+static ChatFeed *g_chatFeed = nullptr;
 static obs_hotkey_id g_goLive = OBS_INVALID_HOTKEY_ID;
 static obs_hotkey_id g_endLive = OBS_INVALID_HOTKEY_ID;
 
@@ -53,6 +57,14 @@ MODULE_EXPORT bool obs_module_load(void)
         g_dock = new T0GStreamDock(mainWindow);
         debug_log("T0GStreamDock created");
 
+        debug_log("Creating T0G Chat Merger dock");
+        g_chatFeed = new ChatFeed(mainWindow);
+        g_chatDock = new ChatMergerDock(mainWindow);
+        QObject::connect(g_chatFeed, &ChatFeed::messageReceived, g_chatDock, &ChatMergerDock::addMessage);
+        mainWindow->addDockWidget(Qt::RightDockWidgetArea, g_chatDock);
+        g_chatDock->show();
+        debug_log("T0G Chat Merger dock added and shown");
+
         debug_log("Adding dock to OBS");
         mainWindow->addDockWidget(Qt::RightDockWidgetArea, g_dock);
         g_dock->show();
@@ -77,4 +89,6 @@ MODULE_EXPORT void obs_module_unload(void)
 {
     debug_log("obs_module_unload entered");
     g_dock = nullptr;
+    g_chatDock = nullptr;
+    g_chatFeed = nullptr;
 }
