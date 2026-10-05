@@ -41,6 +41,19 @@ jobs:
           Copy-Item -Force t0g-source/obs-plugin/ci/CMakeLists.txt CMakeLists.txt
           Copy-Item -Force t0g-source/obs-plugin/ci/buildspec.json buildspec.json
 
+      - name: Build local TikTok chat connector
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          git clone --depth 1 https://github.com/PirateTok/live-c.git piratetok-live-c
+          Push-Location piratetok-live-c
+          cargo build --release
+          Pop-Location
+          $dll = Get-ChildItem -Path "piratetok-live-c/target/release" -Filter "piratetok.dll" | Select-Object -First 1
+          if (-not $dll) { throw "piratetok.dll was not produced." }
+          New-Item -ItemType Directory -Force -Path "local-chat-runtime" | Out-Null
+          Copy-Item -Force $dll.FullName "local-chat-runtime/piratetok.dll"
+
       - name: Build plugin
         uses: ./.github/actions/build-plugin
         with:
@@ -180,15 +193,11 @@ jobs:
             Copy-Item -Force $tls.FullName "$payload/bin/64bit/tls/$($tls.Name)"
           }
 
-          # Chat Merger uses Qt WebSockets for the TikTok LIVE event connection.
-          $webSocketsDll = Get-ChildItem -Path ".deps" -Recurse -Filter "Qt6WebSockets.dll" -ErrorAction SilentlyContinue |
-            Select-Object -First 1
-          if (-not $webSocketsDll) {
-            throw "Qt6WebSockets.dll was not found in the OBS dependency bundle."
-          }
+          $localTikTok = "local-chat-runtime/piratetok.dll"
+          if (-not (Test-Path $localTikTok)) { throw "Local TikTok chat runtime is missing." }
           New-Item -ItemType Directory -Force -Path "$payload/bin/64bit" | Out-Null
-          Write-Host "Bundling Qt WebSockets runtime: $($webSocketsDll.FullName)"
-          Copy-Item -Force $webSocketsDll.FullName "$payload/bin/64bit/Qt6WebSockets.dll"
+          Copy-Item -Force $localTikTok "$payload/bin/64bit/piratetok.dll"
+
 
           $pluginData = Get-ChildItem -Path release -Recurse -Directory |
             Where-Object { $_.Name -eq "data" -and $_.Parent.Name -eq "t0g-stream-control" } |
