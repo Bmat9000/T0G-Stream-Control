@@ -73,8 +73,12 @@ jobs:
           if (-not $dumpbin) { throw "dumpbin.exe not found on the Windows runner." }
 
           Write-Host "::group::T0G DLL headers"
-          & $dumpbin.FullName /headers $dll.FullName
+          $headers = (& $dumpbin.FullName /headers $dll.FullName | Out-String)
+          Write-Host $headers
           if ($LASTEXITCODE -ne 0) { throw "dumpbin /headers failed." }
+          if ($headers -notmatch "machine \(x64\)") {
+            throw "Plugin is not an x64 DLL. OBS 64-bit requires IMAGE_FILE_MACHINE_AMD64."
+          }
           Write-Host "::endgroup::"
 
           Write-Host "::group::T0G DLL imports"
