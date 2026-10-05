@@ -109,10 +109,6 @@ public static class T0GDeepLoader {
 }
 '@
 Add-Type $native -ErrorAction SilentlyContinue
-$DEFAULT=0x1000;$USER=0x400
-[T0GDeepLoader]::SetDefaultDllDirectories($DEFAULT -bor $USER)|Out-Null
-foreach($d in $searchDirs){[T0GDeepLoader]::AddDllDirectory($d)|Out-Null}
-
 if(-not [Environment]::Is64BitProcess -and [Environment]::Is64BitOperatingSystem) {
   Log ""
   Log "=== LOAD TEST SKIPPED ==="
@@ -123,6 +119,38 @@ if(-not [Environment]::Is64BitProcess -and [Environment]::Is64BitOperatingSystem
   exit 193
 }
 
+Log "=== OBS-LIKE SEARCH TEST (NO ADDED DLL DIRECTORIES) ==="
+# Reproduce the important difference from the augmented test below: do not add
+# OBS/plugin directories to the process DLL search path first.
+$obsLikeNative=@'
+using System;
+using System.Runtime.InteropServices;
+public static class T0GObsLikeLoader {
+ [DllImport("kernel32.dll",SetLastError=true,CharSet=CharSet.Unicode)] public static extern IntPtr LoadLibraryEx(string f,IntPtr h,uint flags);
+ [DllImport("kernel32.dll",SetLastError=true)] public static extern bool FreeLibrary(IntPtr h);
+}
+'@
+Add-Type $obsLikeNative -ErrorAction SilentlyContinue
+$obsLike=[T0GObsLikeLoader]::LoadLibraryEx($plugin,[IntPtr]::Zero,0)
+if($obsLike -eq [IntPtr]::Zero){
+  $e=[Runtime.InteropServices.Marshal]::GetLastWin32Error();$m=(New-Object ComponentModel.Win32Exception($e)).Message
+  Log ("OBS-LIKE PLUGIN FAIL ["+$e+"] "+$m)
+  if($e -eq 126){Log "DIFFERENCE FOUND: the plugin needs a DLL search directory that the augmented test supplies but this clean loader does not."}
+  elseif($e -eq 127){Log "DIFFERENCE FOUND: a dependency is found but an imported symbol cannot be resolved in this loader environment."}
+  elseif($e -eq 193){Log "DIFFERENCE FOUND: Windows resolved an incompatible image in this loader environment."}
+} else {
+  Log "OBS-LIKE PLUGIN PASS: Windows accepts the plugin without our added DLL directories."
+  [T0GObsLikeLoader]::FreeLibrary($obsLike)|Out-Null
+}
+Log ""
+
+$DEFAULT=0x1000;$USER=0x400
+[T0GDeepLoader]::SetDefaultDllDirectories($DEFAULT -bor $USER)|Out-Null
+foreach($d in $searchDirs){[T0GDeepLoader]::AddDllDirectory($d)|Out-Null}
+
+Log "=== AUGMENTED DLL SEARCH TESTS ==="
+Log ("Added DLL directories: "+($searchDirs -join "; "))
+Log ""
 Log "=== INDIVIDUAL DIRECT DEPENDENCY LOAD TEST ==="
 foreach($dep in $resolved){
   $h=[T0GDeepLoader]::LoadLibraryEx($dep,[IntPtr]::Zero,$DEFAULT -bor $USER)
