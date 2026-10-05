@@ -37,6 +37,8 @@ add_library(t0g-stream-control MODULE
   src/chat-feed.hpp
   src/chat-merger-dock.cpp
   src/chat-merger-dock.hpp
+  src/twitch-chat-service.cpp
+  src/twitch-chat-service.hpp
 )
 
 target_link_libraries(t0g-stream-control PRIVATE
