@@ -82,6 +82,11 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "dumpbin /dependents failed." }
           Write-Host "::endgroup::"
 
+          Write-Host "::group::T0G full import table"
+          & $dumpbin.FullName /imports $dll.FullName
+          if ($LASTEXITCODE -ne 0) { throw "dumpbin /imports failed." }
+          Write-Host "::endgroup::"
+
           Write-Host "::group::T0G OBS module exports"
           $exports = (& $dumpbin.FullName /exports $dll.FullName | Out-String)
           Write-Host $exports
