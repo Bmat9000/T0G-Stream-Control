@@ -238,6 +238,10 @@ T0GSettingsDialog::T0GSettingsDialog(const T0GSettings &cfg, QWidget *parent) : 
     twitchService->restore([this](bool ok, QString name) {
         twitchAccountStatus->setText(ok ? ("Connected as " + name) : "Not connected");
     });
+    connect(twitchService, &TwitchService::accountChanged, this, [this] {
+        const QString name = twitchService->displayName();
+        twitchAccountStatus->setText(name.isEmpty() ? "Not connected" : ("Connected as " + name));
+    });
     connect(connectTwitch, &QPushButton::clicked, this, [this] {
         twitchService->setClientId(QString::fromUtf8(kT0GTwitchClientId));
         twitchService->connectDevice([this](bool ok, QString msg) {
