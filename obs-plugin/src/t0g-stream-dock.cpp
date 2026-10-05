@@ -11,6 +11,7 @@
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QLineEdit>
+#include <QListWidget>
 #include <QMessageBox>
 #include <QSettings>
 #include <QTimer>
@@ -49,6 +50,10 @@ T0GStreamDock::T0GStreamDock(QWidget *parent) : QDockWidget("T0G Stream Control"
     audienceBox->addItems({"Everyone", "Mature / 18+"});
     form->addRow("Title", titleEdit);
     form->addRow("Game", gameEdit);
+    gameSuggestions = new QListWidget(root);
+    gameSuggestions->setMaximumHeight(110);
+    gameSuggestions->hide();
+    form->addRow("", gameSuggestions);
     form->addRow("TikTok audience", audienceBox);
     layout->addLayout(form);
 
@@ -69,8 +74,23 @@ T0GStreamDock::T0GStreamDock(QWidget *parent) : QDockWidget("T0G Stream Control"
             : "Vertical: Aitum not detected - TikTok will use OBS fallback output");
     });
 
-    loadTikTokButton = new QPushButton("LOAD TIKTOK FROM STREAMLABS", platforms);
-    loadTikTokButton->setToolTip("Loads your existing Streamlabs TikTok session locally. The token is not saved by T0G.");
+    auto *tiktokAccount = new QGroupBox("TikTok / Streamlabs Account", platforms);
+    auto *tiktokAccountLayout = new QFormLayout(tiktokAccount);
+    tiktokUsername = new QLabel("Unknown", tiktokAccount);
+    tiktokApproval = new QLabel("Unknown", tiktokAccount);
+    tiktokCanLive = new QLabel("Unknown", tiktokAccount);
+    tiktokAccountLayout->addRow("Username", tiktokUsername);
+    tiktokAccountLayout->addRow("Status", tiktokApproval);
+    tiktokAccountLayout->addRow("Can Go Live", tiktokCanLive);
+
+    auto *loadButtons = new QHBoxLayout;
+    loadTikTokButton = new QPushButton("LOAD FROM PC", platforms);
+    loadTikTokButton->setToolTip("Load TikTok login from the Streamlabs Desktop app on this PC.");
+    loadTikTokWebButton = new QPushButton("LOAD FROM WEB", platforms);
+    loadTikTokWebButton->setToolTip("Open Streamlabs login in your browser and connect TikTok to T0G.");
+    loadButtons->addWidget(loadTikTokButton);
+    loadButtons->addWidget(loadTikTokWebButton);
+    refreshTikTokButton = new QPushButton("REFRESH ACCOUNT INFO", platforms);
 
     platformLayout->addWidget(twitchEnabled);
     platformLayout->addWidget(twitchStatus);
@@ -78,7 +98,9 @@ T0GStreamDock::T0GStreamDock(QWidget *parent) : QDockWidget("T0G Stream Control"
     platformLayout->addWidget(tiktokEnabled);
     platformLayout->addWidget(tiktokStatus);
     platformLayout->addWidget(verticalStatus);
-    platformLayout->addWidget(loadTikTokButton);
+    platformLayout->addWidget(tiktokAccount);
+    platformLayout->addLayout(loadButtons);
+    platformLayout->addWidget(refreshTikTokButton);
     layout->addWidget(platforms);
 
     updateButton = new QPushButton("UPDATE STREAM INFO", root);
@@ -98,6 +120,21 @@ T0GStreamDock::T0GStreamDock(QWidget *parent) : QDockWidget("T0G Stream Control"
     layout->addStretch();
 
     connect(loadTikTokButton, &QPushButton::clicked, this, [this] { loadTikTokToken(false); });
+    connect(loadTikTokWebButton, &QPushButton::clicked, this, [this] { loadTikTokFromWeb(); });
+    connect(refreshTikTokButton, &QPushButton::clicked, this, [this] { refreshTikTokAccount(); });
+    gameSearchTimer = new QTimer(this);
+    gameSearchTimer->setSingleShot(true);
+    gameSearchTimer->setInterval(300);
+    connect(gameSearchTimer, &QTimer::timeout, this, [this] { runGameSearch(); });
+    connect(gameEdit, &QLineEdit::textEdited, this, [this] {
+        selectedTikTokCategoryId.clear();
+        scheduleGameSearch();
+    });
+    connect(gameSuggestions, &QListWidget::itemClicked, this, [this](QListWidgetItem *item) {
+        gameEdit->setText(item->text());
+        selectedTikTokCategoryId = item->data(Qt::UserRole).toString();
+        gameSuggestions->hide();
+    });
     connect(settingsButton, &QPushButton::clicked, this, [this] { openSettings(); });
     connect(goLiveButton, &QPushButton::clicked, this, [this] { startSelectedPlatforms(); });
     connect(endLiveButton, &QPushButton::clicked, this, [this] { stopSelectedPlatforms(); });
@@ -162,7 +199,81 @@ void T0GStreamDock::loadTikTokToken(bool quiet)
 
     tiktok.setToken(token);
     setTikTokStatus("Connected through Streamlabs");
+    refreshTikTokAccount();
     updateReadyState();
+}
+
+
+void T0GStreamDock::loadTikTokFromWeb()
+{
+    setBusy(true);
+    setTikTokStatus("Waiting for Streamlabs web login...");
+    tiktok.loadTokenFromWeb([this](bool ok, QString, QString error) {
+        setBusy(false);
+        if (!ok) {
+            setTikTokStatus("Web login failed");
+            QMessageBox::warning(this, "TikTok Web Login", error);
+            return;
+        }
+        setTikTokStatus("Connected through Streamlabs");
+        refreshTikTokAccount();
+        updateReadyState();
+    });
+}
+
+void T0GStreamDock::refreshTikTokAccount()
+{
+    if (!tiktok.hasToken()) {
+        tiktokUsername->setText("Unknown");
+        tiktokApproval->setText("Unknown");
+        tiktokCanLive->setText("False");
+        return;
+    }
+
+    tiktok.getAccountInfo([this](TikTokAccountInfo info) {
+        if (!info.ok) {
+            setTikTokStatus("Account info failed");
+            return;
+        }
+        tiktokUsername->setText(info.username.isEmpty() ? "Unknown" : info.username);
+        tiktokApproval->setText(info.status.isEmpty() ? "Unknown" : info.status);
+        tiktokCanLive->setText(info.canGoLive ? "True" : "False");
+        setTikTokStatus(info.canGoLive ? "Connected through Streamlabs" : "Connected - LIVE unavailable");
+        updateReadyState();
+    });
+}
+
+void T0GStreamDock::scheduleGameSearch()
+{
+    if (!tiktok.hasToken() || gameEdit->text().trimmed().isEmpty()) {
+        gameSuggestions->hide();
+        return;
+    }
+    gameSearchTimer->start();
+}
+
+void T0GStreamDock::runGameSearch()
+{
+    const QString query = gameEdit->text().trimmed();
+    if (query.isEmpty() || !tiktok.hasToken()) {
+        gameSuggestions->hide();
+        return;
+    }
+
+    tiktok.searchCategories(query, [this, query](bool ok, QVector<TikTokCategory> categories, QString) {
+        if (gameEdit->text().trimmed() != query)
+            return;
+        gameSuggestions->clear();
+        if (!ok) {
+            gameSuggestions->hide();
+            return;
+        }
+        for (const auto &category : categories) {
+            auto *item = new QListWidgetItem(category.name, gameSuggestions);
+            item->setData(Qt::UserRole, category.id);
+        }
+        gameSuggestions->setVisible(gameSuggestions->count() > 0);
+    });
 }
 
 void T0GStreamDock::openSettings()
@@ -337,6 +448,46 @@ bool T0GStreamDock::startManualTikTok()
 void T0GStreamDock::startTikTok()
 {
     setTikTokStatus("Resolving category...");
+
+    if (!selectedTikTokCategoryId.isNull()) {
+        const QString categoryId = selectedTikTokCategoryId;
+        setTikTokStatus("Creating LIVE...");
+        tiktok.startLive(titleEdit->text().trimmed(), categoryId,
+                         audienceBox->currentIndex() == 1,
+            [this](TikTokLiveResult result) {
+                if (!result.ok) {
+                    setTikTokStatus("Failed to create LIVE");
+                    setBusy(false);
+                    QMessageBox::critical(this, "TikTok LIVE", result.error);
+                    return;
+                }
+                activeTikTokStreamId = result.streamId;
+                SessionState::setTikTokCredentials(result.server, result.key, result.streamId);
+                QString outputError;
+                usingAitumVertical = settings.preferVertical && aitumVertical.available();
+                if (usingAitumVertical) {
+                    setTikTokStatus("Configuring Aitum Vertical...");
+                    if (!aitumVertical.configureTikTok(result.server, result.key, &outputError) ||
+                        !aitumVertical.startTikTok(&outputError)) {
+                        setTikTokStatus("Output setup failed - credentials available in Settings");
+                        usingAitumVertical = false; setBusy(false); endLiveButton->setEnabled(true);
+                        showTikTokFallbackFailure(outputError); return;
+                    }
+                    setTikTokStatus("LIVE - Aitum Vertical");
+                    if (twitchEnabled->isChecked()) setTwitchStatus(obs_frontend_streaming_active() ? "LIVE" : "Starting...");
+                    setBusy(false); endLiveButton->setEnabled(true); return;
+                }
+                setTikTokStatus("Configuring OBS fallback output...");
+                if (!tiktokOutput.configure(result.server, result.key, &outputError) || !tiktokOutput.start(&outputError)) {
+                    setTikTokStatus("Output setup failed - credentials available in Settings");
+                    setBusy(false); endLiveButton->setEnabled(true); showTikTokFallbackFailure(outputError); return;
+                }
+                setTikTokStatus("LIVE");
+                if (twitchEnabled->isChecked()) setTwitchStatus(obs_frontend_streaming_active() ? "LIVE" : "Starting...");
+                setBusy(false); endLiveButton->setEnabled(true);
+            });
+        return;
+    }
 
     tiktok.resolveCategory(gameEdit->text().trimmed(),
         [this](bool ok, QString categoryId, QString error) {
