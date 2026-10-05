@@ -1,6 +1,8 @@
 #pragma once
 #include <QObject>
 #include <QString>
+#include <QJsonValue>
+#include <initializer_list>
 #include "chat-message.hpp"
 
 class QTimer;
@@ -21,6 +23,7 @@ signals:
 private:
     void scheduleReconnect(int delayMs=5000);
     void handleTextMessage(const QString &text);
+    void processValue(const QJsonValue &value);
     void processObject(const class QJsonObject &object);
     static QString normalizedUsername(QString value);
     static QString firstString(const class QJsonObject &object, std::initializer_list<const char *> keys);
