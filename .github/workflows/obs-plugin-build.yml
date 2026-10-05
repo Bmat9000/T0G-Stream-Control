@@ -93,6 +93,36 @@ jobs:
           Write-Host "::endgroup::"
           Write-Host "T0G DLL diagnostics passed."
 
+      - name: Test DLL with Windows loader
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $dll = Get-ChildItem -Path release -Recurse -Filter "t0g-stream-control.dll" | Select-Object -First 1
+          if (-not $dll) { throw "t0g-stream-control.dll was not produced." }
+
+          $native = @'
+          using System;
+          using System.ComponentModel;
+          using System.Runtime.InteropServices;
+          public static class T0GNativeLoader {
+              [DllImport("kernel32.dll", SetLastError=true, CharSet=CharSet.Unicode)]
+              public static extern IntPtr LoadLibraryEx(string lpFileName, IntPtr hFile, uint dwFlags);
+              [DllImport("kernel32.dll", SetLastError=true)]
+              public static extern bool FreeLibrary(IntPtr hModule);
+          }
+          '@
+          Add-Type $native
+          $LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR = 0x00000100
+          $LOAD_LIBRARY_SEARCH_DEFAULT_DIRS = 0x00001000
+          $handle = [T0GNativeLoader]::LoadLibraryEx($dll.FullName, [IntPtr]::Zero, $LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR -bor $LOAD_LIBRARY_SEARCH_DEFAULT_DIRS)
+          if ($handle -eq [IntPtr]::Zero) {
+            $code = [Runtime.InteropServices.Marshal]::GetLastWin32Error()
+            $message = (New-Object ComponentModel.Win32Exception($code)).Message
+            throw "Windows LoadLibraryEx failed for t0g-stream-control.dll. Win32 error $code: $message"
+          }
+          [T0GNativeLoader]::FreeLibrary($handle) | Out-Null
+          Write-Host "Windows loader accepted t0g-stream-control.dll."
+
       - name: Create one-click Windows installer
         shell: pwsh
         run: |
