@@ -44,6 +44,91 @@ static void write_probe_line(std::ofstream &out, const std::string &line)
     blog(LOG_INFO, "[T0G Loader Probe] %s", line.c_str());
 }
 
+static void diagnose_imports(std::ofstream &out, const std::filesystem::path &target)
+{
+    constexpr DWORD dontResolve = DONT_RESOLVE_DLL_REFERENCES;
+    HMODULE image = LoadLibraryExW(target.c_str(), nullptr, dontResolve);
+    if (!image) {
+        write_probe_line(out, "Import scan could not map target without resolving imports.");
+        return;
+    }
+
+    auto base = reinterpret_cast<std::uint8_t *>(image);
+    auto dos = reinterpret_cast<IMAGE_DOS_HEADER *>(base);
+    if (dos->e_magic != IMAGE_DOS_SIGNATURE) {
+        write_probe_line(out, "Import scan: invalid DOS signature.");
+        FreeLibrary(image);
+        return;
+    }
+
+    auto nt = reinterpret_cast<IMAGE_NT_HEADERS *>(base + dos->e_lfanew);
+    if (nt->Signature != IMAGE_NT_SIGNATURE) {
+        write_probe_line(out, "Import scan: invalid NT signature.");
+        FreeLibrary(image);
+        return;
+    }
+
+    const auto &dir =
+        nt->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_IMPORT];
+    if (!dir.VirtualAddress) {
+        write_probe_line(out, "Import scan: no import table.");
+        FreeLibrary(image);
+        return;
+    }
+
+    write_probe_line(out, "=== IN-PROCESS IMPORT / PROCEDURE CHECK ===");
+
+    auto desc = reinterpret_cast<IMAGE_IMPORT_DESCRIPTOR *>(
+        base + dir.VirtualAddress);
+
+    for (; desc->Name; ++desc) {
+        const char *dllName =
+            reinterpret_cast<const char *>(base + desc->Name);
+        HMODULE imported = GetModuleHandleA(dllName);
+
+        if (!imported) {
+            write_probe_line(out, std::string("MODULE NOT LOADED: ") + dllName);
+            continue;
+        }
+
+        char loadedPath[MAX_PATH] = {};
+        GetModuleFileNameA(imported, loadedPath, MAX_PATH);
+        write_probe_line(out, std::string("MODULE: ") + dllName + " -> " +
+                                  loadedPath);
+
+        auto thunk = reinterpret_cast<IMAGE_THUNK_DATA *>(
+            base + (desc->OriginalFirstThunk ? desc->OriginalFirstThunk
+                                             : desc->FirstThunk));
+
+        for (; thunk->u1.AddressOfData; ++thunk) {
+            FARPROC proc = nullptr;
+            std::string symbol;
+
+            if (IMAGE_SNAP_BY_ORDINAL(thunk->u1.Ordinal)) {
+                WORD ordinal = static_cast<WORD>(
+                    IMAGE_ORDINAL(thunk->u1.Ordinal));
+                proc = GetProcAddress(
+                    imported, MAKEINTRESOURCEA(ordinal));
+                symbol = "#" + std::to_string(ordinal);
+            } else {
+                auto byName = reinterpret_cast<IMAGE_IMPORT_BY_NAME *>(
+                    base + thunk->u1.AddressOfData);
+                const char *name =
+                    reinterpret_cast<const char *>(byName->Name);
+                proc = GetProcAddress(imported, name);
+                symbol = name;
+            }
+
+            if (!proc) {
+                write_probe_line(out, std::string("MISSING PROCEDURE: ") +
+                                          dllName + "!" + symbol);
+            }
+        }
+    }
+
+    FreeLibrary(image);
+}
+
 MODULE_EXPORT const char *obs_module_description(void)
 {
     return "T0G in-process Windows loader diagnostic";
@@ -82,6 +167,10 @@ MODULE_EXPORT bool obs_module_load(void)
             write_probe_line(out, std::string("Message: ") + message);
             LocalFree(message);
         }
+
+        if (code == ERROR_PROC_NOT_FOUND)
+            diagnose_imports(out, target);
+
         return true;
     }
 
