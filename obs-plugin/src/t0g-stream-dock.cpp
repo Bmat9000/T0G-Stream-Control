@@ -17,6 +17,7 @@
 #include <QDialog>
 #include <QDialogButtonBox>
 #include <QPlainTextEdit>
+#include <QTextCursor>
 #include <QMenu>
 #include <QSettings>
 #include <QTimer>
