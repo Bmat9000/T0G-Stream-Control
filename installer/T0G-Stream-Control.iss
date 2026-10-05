@@ -1,6 +1,12 @@
 #define MyAppName "T0G Stream Control"
 #define MyAppVersion "0.2.1"
 #define MyAppPublisher "T0G Labs"
+#ifndef PluginPayload
+  #error PluginPayload must be provided by the build workflow
+#endif
+#ifndef InstallerOutput
+  #error InstallerOutput must be provided by the build workflow
+#endif
 
 [Setup]
 AppId={{6B7C54C4-70C7-4A31-B47D-49C620C5B6E9}
