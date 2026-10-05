@@ -17,7 +17,15 @@ constexpr int kConnected = 0;
 constexpr int kReconnecting = 1;
 constexpr int kDisconnected = 2;
 constexpr int kChat = 10;
+constexpr int kGift = 11;
+constexpr int kLike = 12;
+constexpr int kRoomUserSeq = 15;
+constexpr int kFollow = 20;
+constexpr int kShare = 21;
+constexpr int kJoin = 22;
 constexpr int kLiveEnded = 23;
+constexpr int kSubNotify = 62;
+constexpr int kSubscriptionNotify = 103;
 
 QString firstString(const QJsonObject &o, std::initializer_list<const char *> keys)
 {
@@ -168,15 +176,15 @@ void TikTokChatService::handleEvent(int type,const QByteArray &json)
         emit connectionChanged(false,type==kLiveEnded ? "LIVE ended" : "Disconnected");
         return;
     }
-    if (type!=kChat) return;
+    if (type!=kChat && type!=kGift && type!=kLike && type!=kFollow && type!=kShare &&
+        type!=kJoin && type!=kRoomUserSeq && type!=kSubNotify && type!=kSubscriptionNotify)
+        return;
 
     QJsonParseError error{};
     const QJsonDocument doc=QJsonDocument::fromJson(json,&error);
     if (error.error!=QJsonParseError::NoError || !doc.isObject()) return;
     const QJsonObject o=doc.object();
     const QJsonObject user=o.value("user").toObject();
-    const QString comment=o.value("comment").toString();
-    if (user.isEmpty() || comment.isEmpty()) return;
 
     ChatMessage message;
     message.platform=ChatPlatform::TikTok;
@@ -184,8 +192,62 @@ void TikTokChatService::handleEvent(int type,const QByteArray &json)
     message.username=firstString(user,{"unique_id","username"});
     message.displayName=firstString(user,{"nickname","display_name"});
     if (message.displayName.isEmpty()) message.displayName=message.username;
-    message.message=comment;
     const QString avatar=firstString(user,{"avatar"});
     if (!avatar.isEmpty()) message.avatarUrl=QUrl(avatar);
-    if (!message.username.isEmpty()) emit messageReceived(message);
+
+    switch (type) {
+    case kChat:
+        message.type=ChatEventType::Message;
+        message.message=o.value("comment").toString();
+        if (message.message.isEmpty()) return;
+        break;
+    case kGift: {
+        message.type=ChatEventType::Gift;
+        message.giftName=o.value("gift_name").toString();
+        message.giftCount=o.value("repeat_count").toInt(1);
+        message.diamondCount=o.value("diamond_total").toInt();
+        const QJsonObject streak=o.value("streak").toObject();
+        message.giftStreakActive=streak.value("is_active").toBool();
+        message.giftStreakFinal=streak.value("is_final").toBool();
+        const int total=streak.value("total_gift_count").toInt();
+        if (total>0) message.giftCount=total;
+        message.message=QString::fromUtf8("🎁 %1 ×%2").arg(message.giftName.isEmpty() ? "Gift" : message.giftName).arg(message.giftCount);
+        break;
+    }
+    case kLike: {
+        message.type=ChatEventType::Like;
+        const QJsonObject stats=o.value("like_stats").toObject();
+        message.likeCount=stats.value("event_like_count").toInt(o.value("like_count").toInt(1));
+        message.message=QString::fromUtf8("❤️ %1 like%2").arg(message.likeCount).arg(message.likeCount==1 ? "" : "s");
+        break;
+    }
+    case kFollow:
+        message.type=ChatEventType::Follow;
+        message.message=QString::fromUtf8("➕ Followed");
+        break;
+    case kShare:
+        message.type=ChatEventType::Share;
+        message.message=QString::fromUtf8("↗ Shared the LIVE");
+        break;
+    case kJoin:
+        message.type=ChatEventType::Join;
+        message.message="Joined the LIVE";
+        break;
+    case kSubNotify:
+    case kSubscriptionNotify:
+        message.type=ChatEventType::Subscription;
+        message.message=QString::fromUtf8("⭐ Subscribed");
+        break;
+    case kRoomUserSeq:
+        message.type=ChatEventType::ViewerUpdate;
+        message.viewerCount=o.value("viewer_count").toInt(-1);
+        message.message=message.viewerCount>=0 ? QString("%1 viewers").arg(message.viewerCount) : "Viewer count updated";
+        break;
+    default:
+        return;
+    }
+
+    // Viewer updates are room-wide and do not require a user identity.
+    if (message.type==ChatEventType::ViewerUpdate || !message.username.isEmpty())
+        emit messageReceived(message);
 }
