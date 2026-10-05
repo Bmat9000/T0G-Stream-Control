@@ -1,7 +1,6 @@
 #include <obs-module.h>
 #include <obs-frontend-api.h>
 #include <QMainWindow>
-#include <QMessageBox>
 #include <windows.h>
 #include <cstdio>
 #include "t0g-stream-dock.hpp"
@@ -38,7 +37,7 @@ MODULE_EXPORT const char *obs_module_description(void)
     return "T0G Stream Control - Twitch and TikTok control dock for OBS Studio";
 }
 
-bool obs_module_load(void)
+MODULE_EXPORT bool obs_module_load(void)
 {
     debug_log("obs_module_load entered");
 
@@ -74,7 +73,7 @@ bool obs_module_load(void)
     }
 }
 
-void obs_module_unload(void)
+MODULE_EXPORT void obs_module_unload(void)
 {
     debug_log("obs_module_unload entered");
     g_dock = nullptr;
