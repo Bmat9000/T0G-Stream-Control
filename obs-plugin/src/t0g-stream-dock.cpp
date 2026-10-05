@@ -90,7 +90,7 @@ T0GStreamDock::T0GStreamDock(QWidget *parent) : QDockWidget("T0G Stream Control"
     tiktokStatus = new QLabel("Not connected", platforms);
     tiktokStatus->setStyleSheet("margin-left: 24px; color: palette(mid);");
     verticalStatus = new QLabel(QString::fromUtf8("○  Checking Aitum Vertical..."), platforms);
-    QTimer::singleShot(1000, verticalStatus, [this, verticalStatus] {
+    QTimer::singleShot(1000, verticalStatus, [this] {
         verticalStatus->setText(aitumVertical.available()
             ? QString::fromUtf8("✓  Aitum Vertical  •  1080 × 1920")
             : QString::fromUtf8("!  Aitum Vertical not detected  •  OBS fallback"));
