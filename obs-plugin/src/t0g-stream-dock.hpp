@@ -24,7 +24,6 @@ public:
 
 private:
     void updateReadyState();
-    void loadTikTokToken(bool quiet = false);
     void loadTikTokFromWeb();
     void refreshTikTokAccount();
     void scheduleGameSearch();
@@ -49,7 +48,6 @@ private:
     QCheckBox *tiktokEnabled{};
     QLabel *twitchStatus{};
     QLabel *tiktokStatus{};
-    QPushButton *loadTikTokButton{};
     QPushButton *loadTikTokWebButton{};
     QPushButton *refreshTikTokButton{};
     QLabel *tiktokUsername{};
