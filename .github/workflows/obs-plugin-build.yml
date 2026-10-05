@@ -165,6 +165,89 @@ jobs:
           New-Item -ItemType Directory -Force -Path "$payload/obs-plugins/64bit" | Out-Null
           Copy-Item -Force $pluginDll.FullName "$payload/obs-plugins/64bit/t0g-stream-control.dll"
 
+          # Qt's HTTPS support is provided by TLS backend plugins. OBS may not
+          # ship these in every installation, which causes QNetworkAccessManager
+          # to fail with "TLS initialization failed". Bundle the exact Qt TLS
+          # backends from the OBS 32.1.2 dependency set used to build this plugin.
+          $tlsPlugins = Get-ChildItem -Path ".deps" -Recurse -Filter "*.dll" -ErrorAction SilentlyContinue |
+            Where-Object { $_.DirectoryName -match '[\\/]tls Get-ChildItem -Path release -Recurse -Directory | Where-Object { $_.Name -eq "data" -and $_.Parent.Name -eq "t0g-stream-control" } | Select-Object -First 1
+          if ($pluginData) {
+            New-Item -ItemType Directory -Force -Path "$payload/data/obs-plugins/t0g-stream-control" | Out-Null
+            Copy-Item -Recurse -Force "$($pluginData.FullName)/*" "$payload/data/obs-plugins/t0g-stream-control/"
+          }
+
+          choco install innosetup --no-progress -y
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" /DPluginPayload="$((Resolve-Path $payload).Path)" /DInstallerOutput="$((Resolve-Path release).Path)" "t0g-source/installer/T0G-Stream-Control.iss"
+          if ($LASTEXITCODE -ne 0) { throw "Inno Setup failed with exit code $LASTEXITCODE" }
+
+      - name: Upload T0G OBS plugin
+        uses: actions/upload-artifact@v4
+        with:
+          name: T0G-Stream-Control-Windows
+          path: |
+            release/T0G-Stream-Control-Setup.exe
+            release/**/*.zip
+          if-no-files-found: error
+
+      - name: Publish latest installer release
+        if: github.event_name == 'workflow_dispatch'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: t0g-stream-control-latest
+          name: T0G Stream Control - Latest
+          prerelease: false
+          make_latest: true
+          files: release/T0G-Stream-Control-Setup.exe
+          body: |
+            Automatic latest Windows build of T0G Stream Control.
+
+            Download **T0G-Stream-Control-Setup.exe**, close OBS, and run the installer.
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+ -and $_.Name -match '^q.*backend\\.dll Get-ChildItem -Path release -Recurse -Directory | Where-Object { $_.Name -eq "data" -and $_.Parent.Name -eq "t0g-stream-control" } | Select-Object -First 1
+          if ($pluginData) {
+            New-Item -ItemType Directory -Force -Path "$payload/data/obs-plugins/t0g-stream-control" | Out-Null
+            Copy-Item -Recurse -Force "$($pluginData.FullName)/*" "$payload/data/obs-plugins/t0g-stream-control/"
+          }
+
+          choco install innosetup --no-progress -y
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" /DPluginPayload="$((Resolve-Path $payload).Path)" /DInstallerOutput="$((Resolve-Path release).Path)" "t0g-source/installer/T0G-Stream-Control.iss"
+          if ($LASTEXITCODE -ne 0) { throw "Inno Setup failed with exit code $LASTEXITCODE" }
+
+      - name: Upload T0G OBS plugin
+        uses: actions/upload-artifact@v4
+        with:
+          name: T0G-Stream-Control-Windows
+          path: |
+            release/T0G-Stream-Control-Setup.exe
+            release/**/*.zip
+          if-no-files-found: error
+
+      - name: Publish latest installer release
+        if: github.event_name == 'workflow_dispatch'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: t0g-stream-control-latest
+          name: T0G Stream Control - Latest
+          prerelease: false
+          make_latest: true
+          files: release/T0G-Stream-Control-Setup.exe
+          body: |
+            Automatic latest Windows build of T0G Stream Control.
+
+            Download **T0G-Stream-Control-Setup.exe**, close OBS, and run the installer.
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+ }
+          if (-not $tlsPlugins) {
+            throw "No Qt TLS backend plugins were found in the OBS dependency bundle."
+          }
+          New-Item -ItemType Directory -Force -Path "$payload/bin/64bit/tls" | Out-Null
+          foreach ($tls in $tlsPlugins) {
+            Write-Host "Bundling Qt TLS backend: $($tls.FullName)"
+            Copy-Item -Force $tls.FullName "$payload/bin/64bit/tls/$($tls.Name)"
+          }
+
           $pluginData = Get-ChildItem -Path release -Recurse -Directory | Where-Object { $_.Name -eq "data" -and $_.Parent.Name -eq "t0g-stream-control" } | Select-Object -First 1
           if ($pluginData) {
             New-Item -ItemType Directory -Force -Path "$payload/data/obs-plugins/t0g-stream-control" | Out-Null
