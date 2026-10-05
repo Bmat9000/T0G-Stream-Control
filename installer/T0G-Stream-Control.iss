@@ -15,6 +15,7 @@ AppVersion={#MyAppVersion}
 AppPublisher={#MyAppPublisher}
 DefaultDirName={autopf}\obs-studio
 DisableDirPage=no
+UsePreviousAppDir=no
 PrivilegesRequired=admin
 OutputDir={#InstallerOutput}
 OutputBaseFilename=T0G-Stream-Control-Setup
@@ -26,6 +27,7 @@ UninstallDisplayName={#MyAppName}
 [Files]
 Source: "{#PluginPayload}\\obs-plugins\\64bit\\t0g-stream-control.dll"; DestDir: "{app}\\obs-plugins\\64bit"; Flags: ignoreversion
 Source: "{#PluginPayload}\\data\\obs-plugins\\t0g-stream-control\\*"; DestDir: "{app}\\data\\obs-plugins\\t0g-stream-control"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist
+Source: "T0G-Diagnose.ps1"; DestDir: "{app}\\data\\obs-plugins\\t0g-stream-control"; Flags: ignoreversion
 
 [Code]
 function IsOBSInstall(Path: String): Boolean;
@@ -33,14 +35,13 @@ begin
   Result := FileExists(AddBackslash(Path) + 'bin\64bit\obs64.exe');
 end;
 
-function InitializeSetup(): Boolean;
+procedure InitializeWizard();
 var
   DefaultOBS: String;
 begin
   DefaultOBS := ExpandConstant('{autopf}\obs-studio');
   if IsOBSInstall(DefaultOBS) then
     WizardForm.DirEdit.Text := DefaultOBS;
-  Result := True;
 end;
 
 function NextButtonClick(CurPageID: Integer): Boolean;
@@ -57,4 +58,5 @@ begin
 end;
 
 [Run]
-Filename: "{app}\bin\64bit\obs64.exe"; Description: "Launch OBS Studio"; Flags: nowait postinstall skipifsilent
+Filename: "powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -File ""{app}\data\obs-plugins\t0g-stream-control\T0G-Diagnose.ps1"" -ObsRoot ""{app}"""; Description: "Run T0G plugin diagnostics"; Flags: postinstall waituntilterminated skipifsilent
+Filename: "{app}\bin\64bit\obs64.exe"; Description: "Launch OBS Studio"; Flags: nowait postinstall skipifsilent unchecked
