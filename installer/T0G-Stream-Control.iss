@@ -25,7 +25,7 @@ UninstallDisplayName={#MyAppName}
 
 [Files]
 Source: "{#PluginPayload}\\obs-plugins\\64bit\\t0g-stream-control.dll"; DestDir: "{app}\\obs-plugins\\64bit"; Flags: ignoreversion
-Source: "..\installer-payload\data\obs-plugins\t0g-stream-control\*"; DestDir: "{app}\data\obs-plugins\t0g-stream-control"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist
+Source: "{#PluginPayload}\\data\\obs-plugins\\t0g-stream-control\\*"; DestDir: "{app}\\data\\obs-plugins\\t0g-stream-control"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist
 
 [Code]
 function IsOBSInstall(Path: String): Boolean;
