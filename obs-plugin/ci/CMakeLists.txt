@@ -54,10 +54,3 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
 )
 
 set_target_properties_plugin(${CMAKE_PROJECT_NAME} PROPERTIES OUTPUT_NAME ${_name})
-
-add_library(t0g-loader-probe MODULE src/loader-probe.cpp)
-target_link_libraries(t0g-loader-probe PRIVATE OBS::libobs)
-set_target_properties(t0g-loader-probe PROPERTIES
-  PREFIX ""
-  OUTPUT_NAME "t0g-loader-probe"
-)
