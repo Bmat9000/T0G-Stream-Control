@@ -30,14 +30,16 @@
 T0GStreamDock::T0GStreamDock(QWidget *parent) : QDockWidget("T0G Stream Control", parent)
 {
     setObjectName("T0GStreamControlDock");
-    setMinimumWidth(340);
+    setMinimumWidth(380);
 
     auto *root = new QWidget(this);
     auto *layout = new QVBoxLayout(root);
+    layout->setContentsMargins(14, 12, 14, 12);
+    layout->setSpacing(10);
 
     auto *header = new QHBoxLayout;
     auto *brand = new QLabel("T0G STREAM CONTROL", root);
-    brand->setStyleSheet("font-size: 18px; font-weight: 700;");
+    brand->setStyleSheet("font-size: 18px; font-weight: 800;");
     helpButton = new QPushButton("HELP", root);
     helpButton->setMaximumWidth(70);
     settingsButton = new QPushButton("SETTINGS", root);
@@ -50,9 +52,12 @@ T0GStreamDock::T0GStreamDock(QWidget *parent) : QDockWidget("T0G Stream Control"
 
     auto *subtitle = new QLabel("Twitch + TikTok control from inside OBS", root);
     subtitle->setStyleSheet("color: palette(mid);");
-    layout->addWidget(subtitle);
+    subtitle->setVisible(false);
 
-    auto *form = new QFormLayout;
+    auto *streamInfo = new QGroupBox("STREAM DETAILS", root);
+    auto *form = new QFormLayout(streamInfo);
+    form->setContentsMargins(12, 14, 12, 12);
+    form->setSpacing(8);
     titleEdit = new QLineEdit(root);
     titleEdit->setPlaceholderText("Ranked R6 | Road to Champ");
     gameEdit = new QLineEdit(root);
@@ -66,16 +71,18 @@ T0GStreamDock::T0GStreamDock(QWidget *parent) : QDockWidget("T0G Stream Control"
     gameSuggestions->hide();
     form->addRow("", gameSuggestions);
     form->addRow("TikTok audience", audienceBox);
-    layout->addLayout(form);
+    layout->addWidget(streamInfo);
 
-    auto *platforms = new QGroupBox("Platforms", root);
+    auto *platforms = new QGroupBox("PLATFORMS", root);
     auto *platformLayout = new QVBoxLayout(platforms);
+    platformLayout->setContentsMargins(12, 14, 12, 12);
+    platformLayout->setSpacing(7);
 
-    twitchEnabled = new QCheckBox("Twitch (normal OBS stream)", platforms);
+    twitchEnabled = new QCheckBox("TWITCH", platforms);
     twitchEnabled->setChecked(true);
     twitchStatus = new QLabel("Twitch: Ready when OBS is configured", platforms);
 
-    tiktokEnabled = new QCheckBox("TikTok (secondary RTMP output)", platforms);
+    tiktokEnabled = new QCheckBox("TIKTOK", platforms);
     tiktokEnabled->setChecked(true);
     tiktokStatus = new QLabel("TikTok: Not connected", platforms);
     auto *verticalStatus = new QLabel("Vertical: checking Aitum...", platforms);
@@ -85,7 +92,7 @@ T0GStreamDock::T0GStreamDock(QWidget *parent) : QDockWidget("T0G Stream Control"
             : "Vertical: Aitum not detected - TikTok will use OBS fallback output");
     });
 
-    auto *tiktokAccount = new QGroupBox("TikTok / Streamlabs Account", platforms);
+    auto *tiktokAccount = new QGroupBox("TikTok Account", platforms);
     auto *tiktokAccountLayout = new QFormLayout(tiktokAccount);
     tiktokUsername = new QLabel("Unknown", tiktokAccount);
     tiktokApproval = new QLabel("Unknown", tiktokAccount);
@@ -95,36 +102,44 @@ T0GStreamDock::T0GStreamDock(QWidget *parent) : QDockWidget("T0G Stream Control"
     tiktokAccountLayout->addRow("Can Go Live", tiktokCanLive);
 
     auto *loadButtons = new QHBoxLayout;
-    loadTikTokWebButton = new QPushButton("LOAD FROM WEB", platforms);
+    loadTikTokWebButton = new QPushButton("CONNECT TIKTOK", platforms);
     loadTikTokWebButton->setToolTip("Open Streamlabs login in your browser and connect TikTok to T0G.");
     loadButtons->addWidget(loadTikTokWebButton);
-    refreshTikTokButton = new QPushButton("REFRESH ACCOUNT INFO", platforms);
+    refreshTikTokButton = new QPushButton("REFRESH", platforms);
+    refreshTikTokButton->setMaximumWidth(95);
 
     platformLayout->addWidget(twitchEnabled);
     platformLayout->addWidget(twitchStatus);
     platformLayout->addSpacing(6);
     platformLayout->addWidget(tiktokEnabled);
     platformLayout->addWidget(tiktokStatus);
+    verticalStatus->setStyleSheet("color: palette(mid); font-size: 11px;");
     platformLayout->addWidget(verticalStatus);
     platformLayout->addWidget(tiktokAccount);
+    loadButtons->addWidget(refreshTikTokButton);
     platformLayout->addLayout(loadButtons);
-    platformLayout->addWidget(refreshTikTokButton);
     layout->addWidget(platforms);
 
-    updateButton = new QPushButton("UPDATE STREAM INFO", root);
+    updateButton = new QPushButton("UPDATE TITLE / GAME", root);
     updateButton->setToolTip("TikTok uses these fields when T0G creates the LIVE session. Twitch metadata API wiring is the next milestone.");
 
     auto *buttons = new QHBoxLayout;
     goLiveButton = new QPushButton("GO LIVE", root);
-    goLiveButton->setMinimumHeight(42);
+    goLiveButton->setMinimumHeight(46);
+    goLiveButton->setStyleSheet("font-weight: 700;");
     endLiveButton = new QPushButton("END LIVE", root);
-    endLiveButton->setMinimumHeight(42);
+    endLiveButton->setMinimumHeight(46);
     endLiveButton->setEnabled(false);
     buttons->addWidget(goLiveButton);
     buttons->addWidget(endLiveButton);
 
-    layout->addWidget(updateButton);
-    layout->addLayout(buttons);
+    auto *actions = new QGroupBox("STREAM CONTROL", root);
+    auto *actionsLayout = new QVBoxLayout(actions);
+    actionsLayout->setContentsMargins(12, 14, 12, 12);
+    actionsLayout->setSpacing(8);
+    actionsLayout->addWidget(updateButton);
+    actionsLayout->addLayout(buttons);
+    layout->addWidget(actions);
     layout->addStretch();
 
     connect(loadTikTokWebButton, &QPushButton::clicked, this, [this] { loadTikTokFromWeb(); });
