@@ -2,6 +2,7 @@
 #include "credential-store.hpp"
 #include "preflight-check.hpp"
 #include "session-state.hpp"
+#include "t0g-log.hpp"
 
 #include <obs-frontend-api.h>
 #include <QCheckBox>
@@ -13,6 +14,10 @@
 #include <QLineEdit>
 #include <QListWidget>
 #include <QMessageBox>
+#include <QDialog>
+#include <QDialogButtonBox>
+#include <QPlainTextEdit>
+#include <QMenu>
 #include <QSettings>
 #include <QTimer>
 #include <QPushButton>
@@ -30,10 +35,13 @@ T0GStreamDock::T0GStreamDock(QWidget *parent) : QDockWidget("T0G Stream Control"
     auto *header = new QHBoxLayout;
     auto *brand = new QLabel("T0G STREAM CONTROL", root);
     brand->setStyleSheet("font-size: 18px; font-weight: 700;");
+    helpButton = new QPushButton("HELP", root);
+    helpButton->setMaximumWidth(70);
     settingsButton = new QPushButton("SETTINGS", root);
     settingsButton->setMaximumWidth(100);
     header->addWidget(brand);
     header->addStretch();
+    header->addWidget(helpButton);
     header->addWidget(settingsButton);
     layout->addLayout(header);
 
@@ -131,6 +139,7 @@ T0GStreamDock::T0GStreamDock(QWidget *parent) : QDockWidget("T0G Stream Control"
         selectedTikTokCategoryId = item->data(Qt::UserRole).toString();
         gameSuggestions->hide();
     });
+    connect(helpButton, &QPushButton::clicked, this, [this] { openHelpMenu(); });
     connect(settingsButton, &QPushButton::clicked, this, [this] { openSettings(); });
     connect(goLiveButton, &QPushButton::clicked, this, [this] { startSelectedPlatforms(); });
     connect(endLiveButton, &QPushButton::clicked, this, [this] { stopSelectedPlatforms(); });
@@ -158,6 +167,7 @@ T0GStreamDock::T0GStreamDock(QWidget *parent) : QDockWidget("T0G Stream Control"
     tiktokEnabled->setChecked(settings.startTikTok);
     loadSavedStreamInfo();
 
+    T0GLog::write("Dock initialized; Aitum Vertical detected=" + QString(aitumVertical.available() ? "true" : "false"));
     updateReadyState();
     setWidget(root);
 
@@ -173,11 +183,13 @@ void T0GStreamDock::setBusy(bool value)
 void T0GStreamDock::setTikTokStatus(const QString &text)
 {
     tiktokStatus->setText("TikTok: " + text);
+    T0GLog::write("TikTok status: " + text);
 }
 
 void T0GStreamDock::setTwitchStatus(const QString &text)
 {
     twitchStatus->setText("Twitch: " + text);
+    T0GLog::write("Twitch status: " + text);
 }
 
 void T0GStreamDock::loadTikTokFromWeb()
@@ -252,6 +264,37 @@ void T0GStreamDock::runGameSearch()
     });
 }
 
+void T0GStreamDock::openHelpMenu()
+{
+    QMenu menu(this);
+    QAction *viewLogs = menu.addAction("View Logs");
+    QAction *chosen = menu.exec(helpButton->mapToGlobal(QPoint(0, helpButton->height())));
+    if (chosen == viewLogs)
+        showPluginLogs();
+}
+
+void T0GStreamDock::showPluginLogs()
+{
+    QDialog dialog(this);
+    dialog.setWindowTitle("T0G Stream Control Logs");
+    dialog.resize(900, 600);
+    auto *layout = new QVBoxLayout(&dialog);
+    auto *viewer = new QPlainTextEdit(&dialog);
+    viewer->setReadOnly(true);
+    viewer->setLineWrapMode(QPlainTextEdit::NoWrap);
+    viewer->setPlainText(T0GLog::text());
+    viewer->moveCursor(QTextCursor::End);
+    layout->addWidget(viewer);
+    auto *buttons = new QDialogButtonBox(QDialogButtonBox::Close, &dialog);
+    auto *refresh = buttons->addButton("Refresh", QDialogButtonBox::ActionRole);
+    auto *copy = buttons->addButton("Copy All", QDialogButtonBox::ActionRole);
+    connect(refresh, &QPushButton::clicked, &dialog, [viewer] { viewer->setPlainText(T0GLog::text()); viewer->moveCursor(QTextCursor::End); });
+    connect(copy, &QPushButton::clicked, &dialog, [viewer] { viewer->selectAll(); viewer->copy(); viewer->moveCursor(QTextCursor::End); });
+    connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+    layout->addWidget(buttons);
+    dialog.exec();
+}
+
 void T0GStreamDock::openSettings()
 {
     T0GSettingsDialog dialog(settings, this);
@@ -317,6 +360,7 @@ void T0GStreamDock::saveStreamInfo()
 
 void T0GStreamDock::startSelectedPlatforms()
 {
+    T0GLog::write(QString("GO LIVE requested; Twitch=%1 TikTok=%2 TikTokPath=%3").arg(twitchEnabled->isChecked() ? "on" : "off", tiktokEnabled->isChecked() ? "on" : "off", settings.tiktokOutputTestMode == 1 ? "Direct OBS RTMP Test" : "Aitum Vertical"));
     if (busy)
         return;
 
@@ -539,6 +583,7 @@ void T0GStreamDock::startTikTok()
 
 void T0GStreamDock::stopSelectedPlatforms()
 {
+    T0GLog::write("END LIVE requested");
     if (busy)
         return;
 
