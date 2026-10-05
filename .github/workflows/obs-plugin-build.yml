@@ -165,12 +165,23 @@ jobs:
           New-Item -ItemType Directory -Force -Path "$payload/obs-plugins/64bit" | Out-Null
           Copy-Item -Force $pluginDll.FullName "$payload/obs-plugins/64bit/t0g-stream-control.dll"
 
-          # Qt's HTTPS support is provided by TLS backend plugins. OBS may not
-          # ship these in every installation, which causes QNetworkAccessManager
-          # to fail with "TLS initialization failed". Bundle the exact Qt TLS
-          # backends from the OBS 32.1.2 dependency set used to build this plugin.
+          # Qt HTTPS support needs a TLS backend plugin. Bundle the exact backend
+          # from the OBS 32.1.2 Qt dependency set used for this plugin build.
           $tlsPlugins = Get-ChildItem -Path ".deps" -Recurse -Filter "*.dll" -ErrorAction SilentlyContinue |
-            Where-Object { $_.DirectoryName -match '[\\/]tls Get-ChildItem -Path release -Recurse -Directory | Where-Object { $_.Name -eq "data" -and $_.Parent.Name -eq "t0g-stream-control" } | Select-Object -First 1
+            Where-Object { $_.DirectoryName -match '[\\/]tls$' -and $_.Name -match '^q.*backend\.dll$' }
+          if (-not $tlsPlugins) {
+            throw "No Qt TLS backend plugins were found in the OBS dependency bundle."
+          }
+
+          New-Item -ItemType Directory -Force -Path "$payload/bin/64bit/tls" | Out-Null
+          foreach ($tls in $tlsPlugins) {
+            Write-Host "Bundling Qt TLS backend: $($tls.FullName)"
+            Copy-Item -Force $tls.FullName "$payload/bin/64bit/tls/$($tls.Name)"
+          }
+
+          $pluginData = Get-ChildItem -Path release -Recurse -Directory |
+            Where-Object { $_.Name -eq "data" -and $_.Parent.Name -eq "t0g-stream-control" } |
+            Select-Object -First 1
           if ($pluginData) {
             New-Item -ItemType Directory -Force -Path "$payload/data/obs-plugins/t0g-stream-control" | Out-Null
             Copy-Item -Recurse -Force "$($pluginData.FullName)/*" "$payload/data/obs-plugins/t0g-stream-control/"
