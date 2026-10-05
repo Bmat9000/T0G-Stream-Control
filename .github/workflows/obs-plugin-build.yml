@@ -67,7 +67,7 @@ jobs:
           }
 
           choco install innosetup --no-progress -y
-          & "${env:ProgramFiles(x86)}\\Inno Setup 6\\ISCC.exe" "t0g-source/installer/T0G-Stream-Control.iss"
+          & "${env:ProgramFiles(x86)}\\Inno Setup 6\\ISCC.exe" /DPluginPayload="$((Resolve-Path $payload).Path)" /DInstallerOutput="$((Resolve-Path release).Path)" "t0g-source/installer/T0G-Stream-Control.iss"
           if ($LASTEXITCODE -ne 0) { throw "Inno Setup failed with exit code $LASTEXITCODE" }
 
       - name: Upload T0G OBS plugin
