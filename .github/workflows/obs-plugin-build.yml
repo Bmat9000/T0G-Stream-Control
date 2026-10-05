@@ -180,6 +180,16 @@ jobs:
             Copy-Item -Force $tls.FullName "$payload/bin/64bit/tls/$($tls.Name)"
           }
 
+          # Chat Merger uses Qt WebSockets for the TikTok LIVE event connection.
+          $webSocketsDll = Get-ChildItem -Path ".deps" -Recurse -Filter "Qt6WebSockets.dll" -ErrorAction SilentlyContinue |
+            Select-Object -First 1
+          if (-not $webSocketsDll) {
+            throw "Qt6WebSockets.dll was not found in the OBS dependency bundle."
+          }
+          New-Item -ItemType Directory -Force -Path "$payload/bin/64bit" | Out-Null
+          Write-Host "Bundling Qt WebSockets runtime: $($webSocketsDll.FullName)"
+          Copy-Item -Force $webSocketsDll.FullName "$payload/bin/64bit/Qt6WebSockets.dll"
+
           $pluginData = Get-ChildItem -Path release -Recurse -Directory |
             Where-Object { $_.Name -eq "data" -and $_.Parent.Name -eq "t0g-stream-control" } |
             Select-Object -First 1
