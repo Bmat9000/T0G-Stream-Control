@@ -1,4 +1,5 @@
 #include "aitum-vertical.hpp"
+#include "t0g-log.hpp"
 
 #include <obs.h>
 #include <obs-module.h>
@@ -40,6 +41,7 @@ bool AitumVertical::available() const
 
 bool AitumVertical::configureTikTok(const QString &server, const QString &key, QString *error)
 {
+    T0GLog::write("Aitum: configuring existing output '" + QString(outputName()) + "' (stream key hidden)");
     // Update only the existing T0G TikTok output. Using Aitum's
     // get/set_stream_settings procedures permanently flips its
     // disable_stream_settings flag for this OBS session and displays the
@@ -63,13 +65,16 @@ bool AitumVertical::configureTikTok(const QString &server, const QString &key, Q
     if (!settings)
         settings = obs_data_create();
 
+    const QString oldServer = QString::fromUtf8(obs_data_get_string(settings, "server"));
+    T0GLog::write("Aitum: updating RTMP server from " + (oldServer.isEmpty() ? QString("<empty>") : oldServer) + " to " + server + "; key hidden");
     obs_data_set_string(settings, "server", server.toUtf8().constData());
     obs_data_set_string(settings, "key", key.toUtf8().constData());
     obs_service_update(service, settings);
 
     obs_data_release(settings);
-    obs_service_release(service);
+    // obs_output_get_service() returns a borrowed pointer. Do not release it.
     obs_output_release(output);
+    T0GLog::write("Aitum: service credentials updated successfully");
     return true;
 }
 
@@ -89,11 +94,18 @@ bool AitumVertical::callOutputCommand(const char *procedure, QString *error) con
 
 bool AitumVertical::startTikTok(QString *error)
 {
-    return callOutputCommand("aitum_vertical_start_stream_output", error);
+    T0GLog::write("Aitum: requesting Vertical Canvas to start T0G TikTok");
+    const bool called = callOutputCommand("aitum_vertical_start_stream_output", error);
+    obs_output_t *output = getOutput(outputName());
+    const bool activeNow = output && obs_output_active(output);
+    if (output) obs_output_release(output);
+    T0GLog::write(QString("Aitum: start command %1; output active immediately=%2").arg(called ? "accepted" : "failed", activeNow ? "true" : "false"), called ? LOG_INFO : LOG_ERROR);
+    return called;
 }
 
 bool AitumVertical::stopTikTok(QString *error)
 {
+    T0GLog::write("Aitum: requesting Vertical Canvas to stop T0G TikTok");
     return callOutputCommand("aitum_vertical_stop_stream_output", error);
 }
 
