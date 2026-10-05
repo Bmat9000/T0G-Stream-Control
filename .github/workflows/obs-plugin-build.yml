@@ -112,9 +112,25 @@ jobs:
           }
           '@
           Add-Type $native
-          $LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR = 0x00000100
-          $LOAD_LIBRARY_SEARCH_DEFAULT_DIRS = 0x00001000
-          $handle = [T0GNativeLoader]::LoadLibraryEx($dll.FullName, [IntPtr]::Zero, $LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR -bor $LOAD_LIBRARY_SEARCH_DEFAULT_DIRS)
+          $obsDll = Get-ChildItem -Path . -Recurse -Filter "obs.dll" -ErrorAction SilentlyContinue | Select-Object -First 1
+          $frontendDll = Get-ChildItem -Path . -Recurse -Filter "obs-frontend-api.dll" -ErrorAction SilentlyContinue | Select-Object -First 1
+          if (-not $obsDll) { throw "obs.dll could not be located in the build workspace." }
+          if (-not $frontendDll) { throw "obs-frontend-api.dll could not be located in the build workspace." }
+
+          $runtimeDirs = @($obsDll.DirectoryName, $frontendDll.DirectoryName) | Select-Object -Unique
+          foreach ($dir in $runtimeDirs) {
+            Write-Host "Adding runtime DLL directory: $dir"
+            $env:PATH = "$dir;$env:PATH"
+          }
+
+          $qtDll = Get-ChildItem -Path . -Recurse -Filter "Qt6Core.dll" -ErrorAction SilentlyContinue | Select-Object -First 1
+          if ($qtDll) {
+            Write-Host "Adding Qt runtime DLL directory: $($qtDll.DirectoryName)"
+            $env:PATH = "$($qtDll.DirectoryName);$env:PATH"
+          }
+
+          $LOAD_WITH_ALTERED_SEARCH_PATH = 0x00000008
+          $handle = [T0GNativeLoader]::LoadLibraryEx($dll.FullName, [IntPtr]::Zero, $LOAD_WITH_ALTERED_SEARCH_PATH)
           if ($handle -eq [IntPtr]::Zero) {
             $code = [Runtime.InteropServices.Marshal]::GetLastWin32Error()
             $message = (New-Object ComponentModel.Win32Exception($code)).Message
