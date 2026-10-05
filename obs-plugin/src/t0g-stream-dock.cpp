@@ -84,11 +84,8 @@ T0GStreamDock::T0GStreamDock(QWidget *parent) : QDockWidget("T0G Stream Control"
     tiktokAccountLayout->addRow("Can Go Live", tiktokCanLive);
 
     auto *loadButtons = new QHBoxLayout;
-    loadTikTokButton = new QPushButton("LOAD FROM PC", platforms);
-    loadTikTokButton->setToolTip("Load TikTok login from the Streamlabs Desktop app on this PC.");
     loadTikTokWebButton = new QPushButton("LOAD FROM WEB", platforms);
     loadTikTokWebButton->setToolTip("Open Streamlabs login in your browser and connect TikTok to T0G.");
-    loadButtons->addWidget(loadTikTokButton);
     loadButtons->addWidget(loadTikTokWebButton);
     refreshTikTokButton = new QPushButton("REFRESH ACCOUNT INFO", platforms);
 
@@ -119,7 +116,6 @@ T0GStreamDock::T0GStreamDock(QWidget *parent) : QDockWidget("T0G Stream Control"
     layout->addLayout(buttons);
     layout->addStretch();
 
-    connect(loadTikTokButton, &QPushButton::clicked, this, [this] { loadTikTokToken(false); });
     connect(loadTikTokWebButton, &QPushButton::clicked, this, [this] { loadTikTokFromWeb(); });
     connect(refreshTikTokButton, &QPushButton::clicked, this, [this] { refreshTikTokAccount(); });
     gameSearchTimer = new QTimer(this);
@@ -165,14 +161,12 @@ T0GStreamDock::T0GStreamDock(QWidget *parent) : QDockWidget("T0G Stream Control"
     updateReadyState();
     setWidget(root);
 
-    if (settings.autoLoadTikTok)
-        QTimer::singleShot(700, this, [this] { loadTikTokToken(true); });
 }
 
 void T0GStreamDock::setBusy(bool value)
 {
     busy = value;
-    loadTikTokButton->setEnabled(!busy);
+    loadTikTokWebButton->setEnabled(!busy);
     updateReadyState();
 }
 
@@ -185,24 +179,6 @@ void T0GStreamDock::setTwitchStatus(const QString &text)
 {
     twitchStatus->setText("Twitch: " + text);
 }
-
-void T0GStreamDock::loadTikTokToken(bool quiet)
-{
-    QString error;
-    const QString token = TikTokService::loadTokenFromStreamlabsDesktop(&error);
-    if (token.isEmpty()) {
-        setTikTokStatus("Not connected");
-        if (!quiet)
-            QMessageBox::warning(this, "TikTok Connection", error);
-        return;
-    }
-
-    tiktok.setToken(token);
-    setTikTokStatus("Connected through Streamlabs");
-    refreshTikTokAccount();
-    updateReadyState();
-}
-
 
 void T0GStreamDock::loadTikTokFromWeb()
 {
@@ -292,8 +268,6 @@ void T0GStreamDock::openSettings()
         saveStreamInfo();
     updateReadyState();
 
-    if (settings.autoLoadTikTok && !tiktok.hasToken())
-        loadTikTokToken(true);
 }
 
 void T0GStreamDock::showTikTokFallbackFailure(const QString &detail)
@@ -385,7 +359,7 @@ void T0GStreamDock::startSelectedPlatforms()
         if (!tiktok.hasToken()) {
             setBusy(false);
             QMessageBox::warning(this, "TikTok not connected",
-                                 "Click LOAD TIKTOK FROM STREAMLABS first.");
+                                 "Click LOAD FROM WEB first.");
             return;
         }
         startTikTok();
