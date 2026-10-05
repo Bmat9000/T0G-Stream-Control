@@ -16,7 +16,7 @@ AppPublisher={#MyAppPublisher}
 DefaultDirName={autopf}\obs-studio
 DisableDirPage=no
 PrivilegesRequired=admin
-OutputDir=..\release
+OutputDir={#InstallerOutput}
 OutputBaseFilename=T0G-Stream-Control-Setup
 Compression=lzma2
 SolidCompression=yes
@@ -24,7 +24,7 @@ WizardStyle=modern
 UninstallDisplayName={#MyAppName}
 
 [Files]
-Source: "..\installer-payload\obs-plugins\64bit\t0g-stream-control.dll"; DestDir: "{app}\obs-plugins\64bit"; Flags: ignoreversion
+Source: "{#PluginPayload}\\obs-plugins\\64bit\\t0g-stream-control.dll"; DestDir: "{app}\\obs-plugins\\64bit"; Flags: ignoreversion
 Source: "..\installer-payload\data\obs-plugins\t0g-stream-control\*"; DestDir: "{app}\data\obs-plugins\t0g-stream-control"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist
 
 [Code]
