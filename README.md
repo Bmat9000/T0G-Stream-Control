@@ -14,6 +14,14 @@ This application is a simple tool that generates a TikTok Live Stream Key for OB
 - TikTok account
 - Streamlabs installed on your computer and you are logged in with your TikTok account in Streamlabs (optional)
 
+## T0G Stream Control OBS Plugin
+
+### Windows installer
+
+The Windows build now produces **T0G-Stream-Control-Setup.exe**. Download the latest successful GitHub Actions artifact, run the setup, and it installs the plugin into the selected OBS Studio installation automatically.
+
+The installer requires administrator permission because OBS is normally installed under Program Files. Close OBS before installing or updating the plugin.
+
 ## Download
 - Download the latest release from [here](../../releases/latest)
 
