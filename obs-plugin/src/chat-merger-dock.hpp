@@ -13,8 +13,8 @@ public:
     explicit ChatMergerDock(QWidget *parent=nullptr);
 public slots:
     void addMessage(ChatMessage message);
-    void setTwitchConnected(bool connected);
-    void setTikTokConnected(bool connected);
+    void setTwitchState(bool connected, QString detail);
+    void setTikTokState(bool connected, QString detail);
 private:
     void refreshHeader();
     QWidget *feed{};
@@ -22,4 +22,6 @@ private:
     QLabel *status{};
     bool twitchConnected=false;
     bool tiktokConnected=false;
+    QString twitchDetail="Waiting";
+    QString tiktokDetail="Waiting";
 };
