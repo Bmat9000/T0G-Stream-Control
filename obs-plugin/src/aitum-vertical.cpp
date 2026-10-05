@@ -10,82 +10,67 @@ bool callProc(const char *name, calldata_t *cd)
     proc_handler_t *handler = obs_get_proc_handler();
     return handler && proc_handler_call(handler, name, cd);
 }
-}
 
-bool AitumVertical::available() const
+obs_output_t *getOutput(const QString &name)
 {
-    if (!obs_get_module("vertical-canvas"))
-        return false;
-
     calldata_t cd;
     calldata_init(&cd);
     calldata_set_int(&cd, "width", 0);
     calldata_set_int(&cd, "height", 0);
-    const bool ok = callProc("aitum_vertical_get_stream_settings", &cd);
-    auto *outputs = static_cast<obs_data_array_t *>(calldata_ptr(&cd, "outputs"));
-    if (outputs)
-        obs_data_array_release(outputs);
+    calldata_set_string(&cd, "name", name.toUtf8().constData());
+
+    if (!callProc("aitum_vertical_get_stream_output", &cd)) {
+        calldata_free(&cd);
+        return nullptr;
+    }
+
+    auto *output = static_cast<obs_output_t *>(calldata_ptr(&cd, "output"));
     calldata_free(&cd);
-    return ok;
+    return output;
+}
+}
+
+bool AitumVertical::available() const
+{
+    // Do not call aitum_vertical_get_stream_settings here. Aitum Vertical
+    // intentionally disables its own Streaming settings UI when that proc is
+    // called because it assumes an external multistream controller owns them.
+    return obs_get_module("vertical-canvas") != nullptr;
 }
 
 bool AitumVertical::configureTikTok(const QString &server, const QString &key, QString *error)
 {
-    calldata_t get;
-    calldata_init(&get);
-    calldata_set_int(&get, "width", 0);
-    calldata_set_int(&get, "height", 0);
-
-    if (!callProc("aitum_vertical_get_stream_settings", &get)) {
-        calldata_free(&get);
-        if (error) *error = "Aitum Vertical is not available.";
+    // Update only the existing T0G TikTok output. Using Aitum's
+    // get/set_stream_settings procedures permanently flips its
+    // disable_stream_settings flag for this OBS session and displays the
+    // misleading "Aitum Multistream" warning.
+    obs_output_t *output = getOutput(outputName());
+    if (!output) {
+        if (error)
+            *error = "T0G TikTok output was not found in Aitum Vertical. Add an output named 'T0G TikTok' once in Vertical Settings.";
         return false;
     }
 
-    auto *current = static_cast<obs_data_array_t *>(calldata_ptr(&get, "outputs"));
-    obs_data_array_t *updated = obs_data_array_create();
-    bool replaced = false;
-
-    if (current) {
-        const size_t count = obs_data_array_count(current);
-        for (size_t i = 0; i < count; ++i) {
-            obs_data_t *item = obs_data_array_item(current, i);
-            const QString name = QString::fromUtf8(obs_data_get_string(item, "name"));
-            if (name == outputName()) {
-                obs_data_set_string(item, "stream_server", server.toUtf8().constData());
-                obs_data_set_string(item, "stream_key", key.toUtf8().constData());
-                obs_data_set_bool(item, "enabled", true);
-                replaced = true;
-            }
-            obs_data_array_push_back(updated, item);
-            obs_data_release(item);
-        }
-        obs_data_array_release(current);
-    }
-    calldata_free(&get);
-
-    if (!replaced) {
-        obs_data_t *item = obs_data_create();
-        obs_data_set_string(item, "name", outputName());
-        obs_data_set_string(item, "stream_server", server.toUtf8().constData());
-        obs_data_set_string(item, "stream_key", key.toUtf8().constData());
-        obs_data_set_bool(item, "enabled", true);
-        obs_data_array_push_back(updated, item);
-        obs_data_release(item);
+    obs_service_t *service = obs_output_get_service(output);
+    if (!service) {
+        obs_output_release(output);
+        if (error)
+            *error = "T0G TikTok output does not have a streaming service.";
+        return false;
     }
 
-    calldata_t set;
-    calldata_init(&set);
-    calldata_set_int(&set, "width", 0);
-    calldata_set_int(&set, "height", 0);
-    calldata_set_ptr(&set, "outputs", updated);
-    const bool ok = callProc("aitum_vertical_set_stream_settings", &set);
-    calldata_free(&set);
-    obs_data_array_release(updated);
+    obs_data_t *settings = obs_service_get_settings(service);
+    if (!settings)
+        settings = obs_data_create();
 
-    if (!ok && error)
-        *error = "Aitum Vertical rejected the TikTok output settings.";
-    return ok;
+    obs_data_set_string(settings, "server", server.toUtf8().constData());
+    obs_data_set_string(settings, "key", key.toUtf8().constData());
+    obs_service_update(service, settings);
+
+    obs_data_release(settings);
+    obs_service_release(service);
+    obs_output_release(output);
+    return true;
 }
 
 bool AitumVertical::callOutputCommand(const char *procedure, QString *error) const
@@ -114,21 +99,9 @@ bool AitumVertical::stopTikTok(QString *error)
 
 bool AitumVertical::active() const
 {
-    calldata_t cd;
-    calldata_init(&cd);
-    calldata_set_int(&cd, "width", 0);
-    calldata_set_int(&cd, "height", 0);
-    calldata_set_string(&cd, "name", outputName());
-
-    if (!callProc("aitum_vertical_get_stream_output", &cd)) {
-        calldata_free(&cd);
-        return false;
-    }
-
-    auto *output = static_cast<obs_output_t *>(calldata_ptr(&cd, "output"));
+    obs_output_t *output = getOutput(outputName());
     const bool isActive = output && obs_output_active(output);
     if (output)
         obs_output_release(output);
-    calldata_free(&cd);
     return isActive;
 }
