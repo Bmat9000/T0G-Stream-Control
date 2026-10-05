@@ -18,6 +18,7 @@ struct T0GSettings {
     bool stopTwitch = true;
     bool stopTikTok = true;
     bool preferVertical = true;
+    int tiktokOutputTestMode = 0; // 0 = Aitum Vertical, 1 = Direct OBS RTMP diagnostic
     QString defaultTitle;
     QString defaultGame;
     int defaultAudience = 0;
@@ -54,6 +55,7 @@ private:
     QCheckBox *stopTwitch{};
     QCheckBox *stopTikTok{};
     QCheckBox *preferVertical{};
+    QComboBox *tiktokOutputTestMode{};
     QLineEdit *defaultTitle{};
     QLineEdit *defaultGame{};
     QComboBox *defaultAudience{};
