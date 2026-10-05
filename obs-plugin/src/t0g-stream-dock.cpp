@@ -22,6 +22,7 @@
 #include <QSettings>
 #include <QTimer>
 #include <QPushButton>
+#include <QSizePolicy>
 #include <QVBoxLayout>
 #include <QWidget>
 #include <QApplication>
@@ -41,10 +42,12 @@ T0GStreamDock::T0GStreamDock(QWidget *parent) : QDockWidget("T0G Stream Control"
     auto *brand = new QLabel("T0G STREAM CONTROL", root);
     brand->setStyleSheet("font-size: 18px; font-weight: 800;");
     helpButton = new QPushButton("HELP", root);
-    helpButton->setFixedSize(58, 30);
+    helpButton->setMinimumSize(72, 32);
+    helpButton->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
     helpButton->setToolTip("Help and logs");
     settingsButton = new QPushButton("SETTINGS", root);
-    settingsButton->setFixedSize(82, 30);
+    settingsButton->setMinimumSize(104, 32);
+    settingsButton->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
     settingsButton->setToolTip("Settings");
     header->addWidget(brand);
     header->addStretch();
