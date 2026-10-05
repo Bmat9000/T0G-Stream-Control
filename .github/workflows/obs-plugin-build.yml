@@ -50,6 +50,27 @@ jobs:
           config: RelWithDebInfo
           package: false
 
+      - name: Create install-ready OBS package
+        shell: pwsh
+        run: |
+          $pluginDll = Get-ChildItem -Path release -Recurse -Filter "t0g-stream-control.dll" | Select-Object -First 1
+          if (-not $pluginDll) {
+            throw "t0g-stream-control.dll was not found in the packaged release."
+          }
+
+          $installRoot = "release/T0G-Stream-Control-Install"
+          New-Item -ItemType Directory -Force -Path "$installRoot/obs-plugins/64bit" | Out-Null
+          Copy-Item -Force $pluginDll.FullName "$installRoot/obs-plugins/64bit/t0g-stream-control.dll"
+
+          $pluginData = Get-ChildItem -Path release -Recurse -Directory |
+            Where-Object { $_.FullName -match 't0g-stream-control[\\/]data } |
+            Select-Object -First 1
+
+          if ($pluginData) {
+            New-Item -ItemType Directory -Force -Path "$installRoot/data/obs-plugins/t0g-stream-control" | Out-Null
+            Copy-Item -Recurse -Force "$($pluginData.FullName)/*" "$installRoot/data/obs-plugins/t0g-stream-control/"
+          }
+
       - name: Upload T0G OBS plugin
         uses: actions/upload-artifact@v4
         with:
