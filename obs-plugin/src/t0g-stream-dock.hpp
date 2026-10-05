@@ -51,6 +51,8 @@ private:
     QCheckBox *tiktokEnabled{};
     QLabel *twitchStatus{};
     QLabel *tiktokStatus{};
+    QLabel *overallStatus{};
+    QLabel *verticalStatus{};
     QPushButton *loadTikTokWebButton{};
     QPushButton *refreshTikTokButton{};
     QLabel *tiktokUsername{};
