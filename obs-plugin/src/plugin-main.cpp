@@ -6,6 +6,7 @@
 #include "t0g-stream-dock.hpp"
 #include "chat-merger-dock.hpp"
 #include "chat-feed.hpp"
+#include "twitch-chat-service.hpp"
 
 OBS_DECLARE_MODULE()
 OBS_MODULE_USE_DEFAULT_LOCALE("t0g-stream-control", "en-US")
@@ -13,6 +14,7 @@ OBS_MODULE_USE_DEFAULT_LOCALE("t0g-stream-control", "en-US")
 static T0GStreamDock *g_dock = nullptr;
 static ChatMergerDock *g_chatDock = nullptr;
 static ChatFeed *g_chatFeed = nullptr;
+static TwitchChatService *g_twitchChat = nullptr;
 static obs_hotkey_id g_goLive = OBS_INVALID_HOTKEY_ID;
 static obs_hotkey_id g_endLive = OBS_INVALID_HOTKEY_ID;
 
@@ -61,6 +63,17 @@ MODULE_EXPORT bool obs_module_load(void)
         g_chatFeed = new ChatFeed(mainWindow);
         g_chatDock = new ChatMergerDock(mainWindow);
         QObject::connect(g_chatFeed, &ChatFeed::messageReceived, g_chatDock, &ChatMergerDock::addMessage);
+        g_twitchChat = new TwitchChatService(mainWindow);
+        QObject::connect(g_twitchChat, &TwitchChatService::messageReceived, g_chatFeed, &ChatFeed::publish);
+        QObject::connect(g_twitchChat, &TwitchChatService::connectionChanged, g_chatDock,
+                         [=](bool connected, const QString &) { g_chatDock->setTwitchConnected(connected); });
+        QObject::connect(g_dock, &T0GStreamDock::twitchChatIdentityChanged, g_twitchChat,
+                         [=](const QString &login) { g_twitchChat->start(login); });
+        QObject::connect(g_dock, &T0GStreamDock::tiktokChatIdentityChanged, g_chatDock,
+                         [=](const QString &) { g_chatDock->setTikTokConnected(false); });
+        const QString existingTwitchLogin = g_dock->twitchChatLogin();
+        if (!existingTwitchLogin.isEmpty())
+            g_twitchChat->start(existingTwitchLogin);
         mainWindow->addDockWidget(Qt::RightDockWidgetArea, g_chatDock);
         g_chatDock->show();
         debug_log("T0G Chat Merger dock added and shown");
@@ -91,4 +104,5 @@ MODULE_EXPORT void obs_module_unload(void)
     g_dock = nullptr;
     g_chatDock = nullptr;
     g_chatFeed = nullptr;
+    g_twitchChat = nullptr;
 }
