@@ -118,7 +118,7 @@ jobs:
           if ($handle -eq [IntPtr]::Zero) {
             $code = [Runtime.InteropServices.Marshal]::GetLastWin32Error()
             $message = (New-Object ComponentModel.Win32Exception($code)).Message
-            throw "Windows LoadLibraryEx failed for t0g-stream-control.dll. Win32 error $code: $message"
+            throw "Windows LoadLibraryEx failed for t0g-stream-control.dll. Win32 error ${code}: $message"
           }
           [T0GNativeLoader]::FreeLibrary($handle) | Out-Null
           Write-Host "Windows loader accepted t0g-stream-control.dll."
