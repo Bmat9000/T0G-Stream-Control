@@ -10,6 +10,9 @@ on:
       - ".github/workflows/obs-plugin-build.yml"
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   windows:
     name: Windows OBS Plugin
@@ -78,3 +81,18 @@ jobs:
             release/T0G-Stream-Control-Setup.exe
             release/**/*.zip
           if-no-files-found: error
+
+      - name: Publish latest installer release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: t0g-stream-control-latest
+          name: T0G Stream Control - Latest
+          prerelease: true
+          make_latest: false
+          files: release/T0G-Stream-Control-Setup.exe
+          body: |
+            Automatic latest Windows build of T0G Stream Control.
+
+            Download **T0G-Stream-Control-Setup.exe**, close OBS, and run the installer.
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
