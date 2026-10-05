@@ -73,6 +73,9 @@ private:
     QLineEdit *tiktokKey{};
     QPushButton *clearTikTok{};
 
+    QLineEdit *tiktokChatApiKey{};
+    QPushButton *clearTikTokChatApiKey{};
+
     QLineEdit *liveTikTokServer{};
     QLineEdit *liveTikTokKey{};
     QPushButton *showLiveTikTokKey{};
