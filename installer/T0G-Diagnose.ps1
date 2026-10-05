@@ -58,8 +58,13 @@ $pluginDir=Join-Path $ObsRoot "obs-plugins\64bit"
 $plugin=Join-Path $pluginDir "t0g-stream-control.dll"
 Log "T0G Stream Control - Deep Loader Diagnostics"
 Log ("Generated: "+(Get-Date -Format "yyyy-MM-dd HH:mm:ss"))
-Log ("PowerShell process: "+(if([Environment]::Is64BitProcess){"x64"}else{"x86"}))
+$processArch = if([Environment]::Is64BitProcess){"x64"}else{"x86"}
+Log ("PowerShell process: "+$processArch)
+Log ("Windows OS is 64-bit: "+[Environment]::Is64BitOperatingSystem)
 Log ("Windows: "+[Environment]::OSVersion.VersionString)
+if(-not [Environment]::Is64BitProcess -and [Environment]::Is64BitOperatingSystem) {
+  Log "PINPOINT: Diagnostic is running in 32-bit PowerShell. A 32-bit process cannot LoadLibrary 64-bit OBS/Qt/T0G DLLs and will produce Win32 error 193."
+}
 Log ("OBS root: "+$ObsRoot)
 Log ("OBS exe: "+(Join-Path $obsBin "obs64.exe"))
 Log ""
@@ -107,6 +112,16 @@ Add-Type $native -ErrorAction SilentlyContinue
 $DEFAULT=0x1000;$USER=0x400
 [T0GDeepLoader]::SetDefaultDllDirectories($DEFAULT -bor $USER)|Out-Null
 foreach($d in $searchDirs){[T0GDeepLoader]::AddDllDirectory($d)|Out-Null}
+
+if(-not [Environment]::Is64BitProcess -and [Environment]::Is64BitOperatingSystem) {
+  Log ""
+  Log "=== LOAD TEST SKIPPED ==="
+  Log "The diagnostic host is 32-bit, so loading x64 OBS dependencies here would create false Win32 193 failures."
+  Log "Re-run this script with 64-bit PowerShell (System32\\WindowsPowerShell\\v1.0\\powershell.exe)."
+  $lines|Set-Content $report -Encoding UTF8
+  Start-Process notepad.exe -ArgumentList ('"'+$report+'"')
+  exit 193
+}
 
 Log "=== INDIVIDUAL DIRECT DEPENDENCY LOAD TEST ==="
 foreach($dep in $resolved){
