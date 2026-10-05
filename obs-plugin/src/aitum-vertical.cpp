@@ -45,6 +45,7 @@ obs_output_t *getOutput(const QString &name)
     return getOutputForCanvas(name, 0, 0);
 }
 
+} // namespace
 
 bool AitumVertical::available() const
 {
