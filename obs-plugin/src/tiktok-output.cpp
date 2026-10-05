@@ -1,4 +1,5 @@
 #include "tiktok-output.hpp"
+#include "t0g-log.hpp"
 
 #include <obs.h>
 
@@ -31,6 +32,7 @@ void TikTokOutput::reset()
 
 bool TikTokOutput::configure(const QString &server, const QString &key, QString *error)
 {
+    T0GLog::write("Direct RTMP: configure requested; server=" + (server.isEmpty() ? QString("<missing>") : server) + "; key=" + (key.isEmpty() ? QString("<missing>") : QString("<hidden>")));
     reset();
 
     if (server.trimmed().isEmpty() || key.trimmed().isEmpty()) {
@@ -102,11 +104,13 @@ bool TikTokOutput::configure(const QString &server, const QString &key, QString 
 
     obs_output_set_video_encoder(output, videoEncoder);
     obs_output_set_audio_encoder(output, audioEncoder, 0);
+    T0GLog::write(QString("Direct RTMP: configured; videoEncoder=%1 audioEncoder=%2").arg(QString::fromUtf8(obs_encoder_get_id(videoEncoder)), QString::fromUtf8(obs_encoder_get_id(audioEncoder))));
     return true;
 }
 
 bool TikTokOutput::start(QString *error)
 {
+    T0GLog::write("Direct RTMP: start requested");
     if (!output) {
         if (error) *error = "TikTok output is not configured.";
         return false;
@@ -119,13 +123,16 @@ bool TikTokOutput::start(QString *error)
         if (error)
             *error = lastError && *lastError ? QString::fromUtf8(lastError)
                                             : QString("OBS failed to start the TikTok Direct RTMP Test output.");
+        T0GLog::write("Direct RTMP: start FAILED; " + (error ? *error : QString("unknown error")), LOG_ERROR);
         return false;
     }
+    T0GLog::write("Direct RTMP: start accepted");
     return true;
 }
 
 void TikTokOutput::stop()
 {
+    T0GLog::write("Direct RTMP: stop requested");
     if (output && obs_output_active(output))
         obs_output_stop(output);
 }
