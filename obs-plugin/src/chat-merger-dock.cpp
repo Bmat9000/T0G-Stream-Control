@@ -26,6 +26,14 @@ ChatMergerDock::ChatMergerDock(QWidget *parent) : QDockWidget("T0G Chat Merger",
     status=new QLabel(root);
     status->setStyleSheet("font-size: 11px;");
     rootLayout->addWidget(status);
+    viewerLabel=new QLabel("TikTok viewers: --",root);
+    viewerLabel->setStyleSheet("font-size: 11px; color: palette(mid);");
+    rootLayout->addWidget(viewerLabel);
+
+    likeFlushTimer=new QTimer(this);
+    likeFlushTimer->setInterval(5000);
+    connect(likeFlushTimer,&QTimer::timeout,this,&ChatMergerDock::flushLikes);
+    likeFlushTimer->start();
 
     auto *scroll=new QScrollArea(root);
     scroll->setWidgetResizable(true);
@@ -72,6 +80,35 @@ void ChatMergerDock::setTikTokState(bool v, QString detail)
 
 void ChatMergerDock::addMessage(ChatMessage m)
 {
+    if (m.type==ChatEventType::ViewerUpdate) {
+        if (m.viewerCount>=0) viewerLabel->setText(QString("TikTok viewers: %1").arg(m.viewerCount));
+        return;
+    }
+
+    // TikTok can emit a very large number of like events. Group each user's likes
+    // into a single five-second entry so the actual chat remains readable.
+    if (m.type==ChatEventType::Like) {
+        const QString key=m.userId.isEmpty() ? m.username : m.userId;
+        if (key.isEmpty()) return;
+        auto &pending=pendingLikes[key];
+        if (pending.username.isEmpty()) pending=m;
+        else pending.likeCount+=qMax(1,m.likeCount);
+        pending.message=QString::fromUtf8("❤️ %1 likes").arg(pending.likeCount);
+        return;
+    }
+
+    addEventCard(m);
+}
+
+void ChatMergerDock::flushLikes()
+{
+    const auto values=pendingLikes.values();
+    pendingLikes.clear();
+    for (const ChatMessage &m : values) addEventCard(m);
+}
+
+void ChatMergerDock::addEventCard(const ChatMessage &m)
+{
     if (auto *empty=feed->findChild<QLabel*>("emptyChatLabel")) empty->deleteLater();
 
     auto *card=new QFrame(feed);
@@ -81,11 +118,24 @@ void ChatMergerDock::addMessage(ChatMessage m)
     v->setSpacing(3);
 
     auto *top=new QHBoxLayout;
-    auto *name=new QPushButton(m.displayName.isEmpty()?m.username:m.displayName,card);
+    QString shownName=m.displayName.isEmpty()?m.username:m.displayName;
+    if (shownName.isEmpty()) shownName="TikTok LIVE";
+    auto *name=new QPushButton(shownName,card);
     name->setFlat(true);
-    name->setCursor(Qt::PointingHandCursor);
+    name->setCursor(m.username.isEmpty()?Qt::ArrowCursor:Qt::PointingHandCursor);
     name->setStyleSheet("text-align:left; font-weight:700; padding:0; border:0;");
-    auto *badge=new QLabel(m.platform==ChatPlatform::Twitch ? "TWITCH" : "TIKTOK",card);
+
+    QString eventLabel=m.platform==ChatPlatform::Twitch ? "TWITCH" : "TIKTOK";
+    switch(m.type) {
+    case ChatEventType::Gift: eventLabel+=" • GIFT"; break;
+    case ChatEventType::Like: eventLabel+=" • LIKES"; break;
+    case ChatEventType::Follow: eventLabel+=" • FOLLOW"; break;
+    case ChatEventType::Share: eventLabel+=" • SHARE"; break;
+    case ChatEventType::Join: eventLabel+=" • JOIN"; break;
+    case ChatEventType::Subscription: eventLabel+=" • SUB"; break;
+    default: break;
+    }
+    auto *badge=new QLabel(eventLabel,card);
     badge->setStyleSheet("font-size:10px; font-weight:700;");
     top->addWidget(name);
     top->addStretch();
@@ -95,6 +145,8 @@ void ChatMergerDock::addMessage(ChatMessage m)
     auto *body=new QLabel(m.message,card);
     body->setWordWrap(true);
     body->setTextInteractionFlags(Qt::TextSelectableByMouse);
+    if (m.type!=ChatEventType::Message)
+        body->setStyleSheet("font-weight:600;");
     v->addWidget(body);
 
     const QString user=m.username;
@@ -112,7 +164,7 @@ void ChatMergerDock::addMessage(ChatMessage m)
         delete item;
     }
     QTimer::singleShot(0,this,[this]{
-        if(auto *s=qobject_cast<QScrollArea*>(feed->parentWidget()->parentWidget()))
-            s->verticalScrollBar()->setValue(s->verticalScrollBar()->maximum());
+        if(auto *scroll=qobject_cast<QScrollArea*>(feed->parentWidget()->parentWidget()))
+            scroll->verticalScrollBar()->setValue(scroll->verticalScrollBar()->maximum());
     });
 }
