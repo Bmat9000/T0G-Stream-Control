@@ -29,6 +29,8 @@ private:
     void scheduleGameSearch();
     void runGameSearch();
     void openSettings();
+    void openHelpMenu();
+    void showPluginLogs();
     void showTikTokFallbackFailure(const QString &detail);
     void loadSavedStreamInfo();
     void saveStreamInfo();
@@ -56,6 +58,7 @@ private:
     QListWidget *gameSuggestions{};
     QTimer *gameSearchTimer{};
     QPushButton *settingsButton{};
+    QPushButton *helpButton{};
     QPushButton *updateButton{};
     QPushButton *goLiveButton{};
     QPushButton *endLiveButton{};
