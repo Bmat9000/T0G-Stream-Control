@@ -1,4 +1,5 @@
 #include "tiktok-service.hpp"
+#include "t0g-log.hpp"
 
 #include <QByteArray>
 #include <QDir>
@@ -112,8 +113,10 @@ QString TikTokService::loadTokenFromStreamlabsDesktop(QString *error)
 
 void TikTokService::loadTokenFromWeb(std::function<void(bool, QString, QString)> done)
 {
+    T0GLog::write("Streamlabs web login: starting local callback listener");
     auto *server = new QTcpServer(this);
     if (!server->listen(QHostAddress::LocalHost, 0)) {
+        T0GLog::write("Streamlabs web login: local callback listener FAILED", LOG_ERROR);
         done(false, {}, "Could not start the local Streamlabs login callback.");
         server->deleteLater();
         return;
@@ -189,16 +192,19 @@ void TikTokService::loadTokenFromWeb(std::function<void(bool, QString, QString)>
                     return;
                 }
                 setToken(token);
+                T0GLog::write("Streamlabs web login: token received successfully (token hidden)");
                 done(true, token, {});
             });
         });
     });
 
+    T0GLog::write(QString("Streamlabs web login: opening browser; callback port=%1").arg(server->serverPort()));
     QDesktopServices::openUrl(login);
 }
 
 void TikTokService::getAccountInfo(std::function<void(TikTokAccountInfo)> done)
 {
+    T0GLog::write("TikTok API: requesting account info");
     if (!hasToken()) {
         TikTokAccountInfo result; result.error = "TikTok/Streamlabs is not connected."; done(result); return;
     }
@@ -217,6 +223,7 @@ void TikTokService::getAccountInfo(std::function<void(TikTokAccountInfo)> done)
             result.canGoLive = root.value("can_be_live").toBool(false);
             result.ok = true;
         }
+        T0GLog::write(QString("TikTok API: account info %1; canGoLive=%2; error=%3").arg(result.ok ? "OK" : "FAILED", result.canGoLive ? "true" : "false", result.error.isEmpty() ? "<none>" : result.error), result.ok ? LOG_INFO : LOG_ERROR);
         reply->deleteLater();
         done(result);
     });
@@ -302,6 +309,7 @@ void TikTokService::resolveCategory(const QString &game,
 void TikTokService::startLive(const QString &title, const QString &categoryId, bool mature,
                               std::function<void(TikTokLiveResult)> done)
 {
+    T0GLog::write(QString("TikTok API: creating LIVE; titleLen=%1 categorySet=%2 mature=%3").arg(title.size()).arg(categoryId.isEmpty() ? "false" : "true").arg(mature ? "true" : "false"));
     if (!hasToken()) {
         done({false, "TikTok/Streamlabs is not connected.", {}, {}, {}});
         return;
@@ -342,6 +350,7 @@ void TikTokService::startLive(const QString &title, const QString &categoryId, b
             }
         }
 
+        T0GLog::write(QString("TikTok API: create LIVE %1; server=%2; streamIdSet=%3; key=%4; error=%5").arg(result.ok ? "OK" : "FAILED", result.server.isEmpty() ? "<missing>" : result.server, result.streamId.isEmpty() ? "false" : "true", result.key.isEmpty() ? "<missing>" : "<hidden>", result.error.isEmpty() ? "<none>" : result.error), result.ok ? LOG_INFO : LOG_ERROR);
         reply->deleteLater();
         done(result);
     });
@@ -349,6 +358,7 @@ void TikTokService::startLive(const QString &title, const QString &categoryId, b
 
 void TikTokService::endLive(const QString &streamId, std::function<void(bool, QString)> done)
 {
+    T0GLog::write(QString("TikTok API: ending LIVE; streamIdSet=%1").arg(streamId.isEmpty() ? "false" : "true"));
     if (!hasToken() || streamId.isEmpty()) {
         done(false, "No active TikTok LIVE session.");
         return;
