@@ -16,7 +16,7 @@ add_library(${CMAKE_PROJECT_NAME} MODULE)
 
 find_package(libobs REQUIRED)
 find_package(obs-frontend-api REQUIRED)
-find_package(Qt6 REQUIRED COMPONENTS Core Widgets Network WebSockets)
+find_package(Qt6 REQUIRED COMPONENTS Core Widgets Network)
 
 target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE
   OBS::libobs
@@ -24,7 +24,6 @@ target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE
   Qt6::Core
   Qt6::Widgets
   Qt6::Network
-  Qt6::WebSockets
   $<$<PLATFORM_ID:Windows>:advapi32>
 )
 
