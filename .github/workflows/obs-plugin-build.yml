@@ -130,13 +130,14 @@ jobs:
           $dependencyBinDirs = Get-ChildItem -Path ".deps" -Recurse -Filter "*.dll" -ErrorAction SilentlyContinue |
             ForEach-Object { $_.DirectoryName } |
             Select-Object -Unique
-          $runtimeDirs += $dependencyBinDirs
-          $runtimeDirs = $runtimeDirs | Select-Object -Unique
+          $runtimeDirs = @($runtimeDirs) + @($dependencyBinDirs)
+          $runtimeDirs = @($runtimeDirs | Where-Object { $_ } | Select-Object -Unique)
 
           foreach ($dir in $runtimeDirs) {
             Write-Host "Adding runtime DLL directory: $dir"
-            $env:PATH = "$dir;$env:PATH"
           }
+          $runtimePath = [string]::Join(';', [string[]]$runtimeDirs)
+          $env:PATH = "$runtimePath;$env:PATH"
 
           # Use normal dependency resolution so PATH is honored for transitive
           # OBS/Qt dependencies. LOAD_WITH_ALTERED_SEARCH_PATH can bypass the
