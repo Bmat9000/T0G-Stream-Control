@@ -13,6 +13,7 @@ class QComboBox;
 class QLabel;
 class QLineEdit;
 class QPushButton;
+class QListWidget;
 
 class T0GStreamDock final : public QDockWidget {
 public:
@@ -23,6 +24,10 @@ public:
 private:
     void updateReadyState();
     void loadTikTokToken(bool quiet = false);
+    void loadTikTokFromWeb();
+    void refreshTikTokAccount();
+    void scheduleGameSearch();
+    void runGameSearch();
     void openSettings();
     void showTikTokFallbackFailure(const QString &detail);
     void loadSavedStreamInfo();
@@ -44,6 +49,13 @@ private:
     QLabel *twitchStatus{};
     QLabel *tiktokStatus{};
     QPushButton *loadTikTokButton{};
+    QPushButton *loadTikTokWebButton{};
+    QPushButton *refreshTikTokButton{};
+    QLabel *tiktokUsername{};
+    QLabel *tiktokApproval{};
+    QLabel *tiktokCanLive{};
+    QListWidget *gameSuggestions{};
+    QTimer *gameSearchTimer{};
     QPushButton *settingsButton{};
     QPushButton *updateButton{};
     QPushButton *goLiveButton{};
@@ -57,6 +69,7 @@ private:
     AitumVertical aitumVertical;
     bool usingAitumVertical = false;
     QString activeTikTokStreamId;
+    QString selectedTikTokCategoryId;
     bool busy = false;
     T0GSettings settings;
 };
