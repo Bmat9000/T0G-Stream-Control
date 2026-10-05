@@ -40,11 +40,11 @@ T0GStreamDock::T0GStreamDock(QWidget *parent) : QDockWidget("T0G Stream Control"
     auto *header = new QHBoxLayout;
     auto *brand = new QLabel("T0G STREAM CONTROL", root);
     brand->setStyleSheet("font-size: 18px; font-weight: 800;");
-    helpButton = new QPushButton("?", root);
-    helpButton->setFixedSize(34, 30);
+    helpButton = new QPushButton("HELP", root);
+    helpButton->setFixedSize(58, 30);
     helpButton->setToolTip("Help and logs");
-    settingsButton = new QPushButton(QString::fromUtf8("⚙"), root);
-    settingsButton->setFixedSize(34, 30);
+    settingsButton = new QPushButton("SETTINGS", root);
+    settingsButton->setFixedSize(82, 30);
     settingsButton->setToolTip("Settings");
     header->addWidget(brand);
     header->addStretch();
@@ -78,17 +78,17 @@ T0GStreamDock::T0GStreamDock(QWidget *parent) : QDockWidget("T0G Stream Control"
     auto *platforms = new QGroupBox("PLATFORMS", root);
     auto *platformLayout = new QVBoxLayout(platforms);
     platformLayout->setContentsMargins(12, 14, 12, 12);
-    platformLayout->setSpacing(7);
+    platformLayout->setSpacing(5);
 
     twitchEnabled = new QCheckBox("TWITCH", platforms);
     twitchEnabled->setChecked(true);
     twitchStatus = new QLabel("Not connected", platforms);
-    twitchStatus->setStyleSheet("margin-left: 24px; color: palette(mid);");
+    twitchStatus->setStyleSheet("margin-left: 24px; color: palette(text); font-size: 11px;");
 
     tiktokEnabled = new QCheckBox("TIKTOK", platforms);
     tiktokEnabled->setChecked(true);
     tiktokStatus = new QLabel("Not connected", platforms);
-    tiktokStatus->setStyleSheet("margin-left: 24px; color: palette(mid);");
+    tiktokStatus->setStyleSheet("margin-left: 24px; color: palette(text); font-size: 11px;");
     verticalStatus = new QLabel(QString::fromUtf8("○  Checking Aitum Vertical..."), platforms);
     QTimer::singleShot(1000, verticalStatus, [this] {
         verticalStatus->setText(aitumVertical.available()
@@ -98,7 +98,8 @@ T0GStreamDock::T0GStreamDock(QWidget *parent) : QDockWidget("T0G Stream Control"
 
     auto *tiktokAccount = new QGroupBox("TikTok Account", platforms);
     auto *tiktokAccountLayout = new QFormLayout(tiktokAccount);
-    tiktokAccountLayout->setContentsMargins(10, 10, 10, 10);
+    tiktokAccountLayout->setContentsMargins(10, 8, 10, 8);
+    tiktokAccountLayout->setVerticalSpacing(4);
     tiktokUsername = new QLabel("Unknown", tiktokAccount);
     tiktokApproval = new QLabel("Unknown", tiktokAccount);
     tiktokCanLive = new QLabel("Unknown", tiktokAccount);
@@ -115,10 +116,10 @@ T0GStreamDock::T0GStreamDock(QWidget *parent) : QDockWidget("T0G Stream Control"
 
     platformLayout->addWidget(twitchEnabled);
     platformLayout->addWidget(twitchStatus);
-    platformLayout->addSpacing(6);
+    platformLayout->addSpacing(3);
     platformLayout->addWidget(tiktokEnabled);
     platformLayout->addWidget(tiktokStatus);
-    verticalStatus->setStyleSheet("color: palette(mid); font-size: 11px;");
+    verticalStatus->setStyleSheet("margin-left: 24px; color: palette(text); font-size: 11px;");
     platformLayout->addWidget(verticalStatus);
     platformLayout->addWidget(tiktokAccount);
     loadButtons->addWidget(refreshTikTokButton);
@@ -145,7 +146,7 @@ T0GStreamDock::T0GStreamDock(QWidget *parent) : QDockWidget("T0G Stream Control"
     actionsLayout->addWidget(updateButton);
     actionsLayout->addLayout(buttons);
     layout->addWidget(actions);
-    layout->addStretch();
+    layout->addStretch(1);
 
     connect(loadTikTokWebButton, &QPushButton::clicked, this, [this] { loadTikTokFromWeb(); });
     connect(refreshTikTokButton, &QPushButton::clicked, this, [this] { refreshTikTokAccount(); });
