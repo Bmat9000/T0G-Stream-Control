@@ -49,13 +49,25 @@ ChatMergerDock::ChatMergerDock(QWidget *parent) : QDockWidget("T0G Chat Merger",
 
 void ChatMergerDock::refreshHeader()
 {
-    status->setText(QString("Twitch %1     TikTok %2")
-        .arg(twitchConnected ? QString::fromUtf8("● Connected") : QString::fromUtf8("○ Waiting"))
-        .arg(tiktokConnected ? QString::fromUtf8("● Connected") : QString::fromUtf8("○ Waiting")));
+    const QString twitchIcon = twitchConnected ? QString::fromUtf8("●") : QString::fromUtf8("○");
+    const QString tiktokIcon = tiktokConnected ? QString::fromUtf8("●") : QString::fromUtf8("○");
+    status->setText(QString("Twitch %1 %2     TikTok %3 %4")
+        .arg(twitchIcon, twitchDetail, tiktokIcon, tiktokDetail));
 }
 
-void ChatMergerDock::setTwitchConnected(bool v){ twitchConnected=v; refreshHeader(); }
-void ChatMergerDock::setTikTokConnected(bool v){ tiktokConnected=v; refreshHeader(); }
+void ChatMergerDock::setTwitchState(bool v, QString detail)
+{
+    twitchConnected=v;
+    twitchDetail=detail.isEmpty() ? (v ? "Connected" : "Waiting") : detail;
+    refreshHeader();
+}
+
+void ChatMergerDock::setTikTokState(bool v, QString detail)
+{
+    tiktokConnected=v;
+    tiktokDetail=detail.isEmpty() ? (v ? "Connected" : "Waiting") : detail;
+    refreshHeader();
+}
 
 void ChatMergerDock::addMessage(ChatMessage m)
 {
