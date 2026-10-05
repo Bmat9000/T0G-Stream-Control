@@ -3,6 +3,7 @@
 
 struct obs_output;
 struct obs_service;
+struct obs_encoder;
 
 class TikTokOutput {
 public:
@@ -17,4 +18,6 @@ public:
 private:
     obs_output *output{};
     obs_service *service{};
+    obs_encoder *videoEncoder{};
+    obs_encoder *audioEncoder{};
 };
