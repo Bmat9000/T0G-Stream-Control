@@ -24,6 +24,8 @@
 #include <QPushButton>
 #include <QVBoxLayout>
 #include <QWidget>
+#include <QApplication>
+#include <QClipboard>
 
 T0GStreamDock::T0GStreamDock(QWidget *parent) : QDockWidget("T0G Stream Control", parent)
 {
@@ -268,10 +270,76 @@ void T0GStreamDock::runGameSearch()
 void T0GStreamDock::openHelpMenu()
 {
     QMenu menu(this);
+    QAction *aitumSetup = menu.addAction("Aitum TikTok Setup Guide");
     QAction *viewLogs = menu.addAction("View Logs");
     QAction *chosen = menu.exec(helpButton->mapToGlobal(QPoint(0, helpButton->height())));
-    if (chosen == viewLogs)
+    if (chosen == aitumSetup)
+        showAitumTikTokSetupGuide();
+    else if (chosen == viewLogs)
         showPluginLogs();
+}
+
+
+void T0GStreamDock::showAitumTikTokSetupGuide()
+{
+    QDialog dialog(this);
+    dialog.setWindowTitle("Aitum TikTok Setup Guide");
+    dialog.resize(650, 430);
+    auto *layout = new QVBoxLayout(&dialog);
+
+    auto *intro = new QLabel(
+        "<b>Create this output in Aitum Vertical once.</b><br><br>"
+        "In OBS, open <b>Aitum Vertical</b> &gt; <b>Vertical Settings</b> &gt; <b>Streaming</b>. "
+        "Add/enable an RTMP output and enter the values below. The output name must be exact. "
+        "After it exists, T0G can update the server/key automatically each time you go live.",
+        &dialog);
+    intro->setWordWrap(true);
+    layout->addWidget(intro);
+
+    auto addCopyRow = [&](const QString &labelText, const QString &value, bool secret) {
+        auto *label = new QLabel(labelText, &dialog);
+        label->setStyleSheet("font-weight: 600;");
+        layout->addWidget(label);
+        auto *row = new QHBoxLayout;
+        auto *edit = new QLineEdit(value, &dialog);
+        edit->setReadOnly(true);
+        if (secret)
+            edit->setEchoMode(QLineEdit::Password);
+        auto *copy = new QPushButton("COPY", &dialog);
+        copy->setMaximumWidth(80);
+        connect(copy, &QPushButton::clicked, &dialog, [edit, copy] {
+            QApplication::clipboard()->setText(edit->text());
+            copy->setText("COPIED");
+            QTimer::singleShot(1200, copy, [copy] { copy->setText("COPY"); });
+        });
+        row->addWidget(edit);
+        row->addWidget(copy);
+        layout->addLayout(row);
+    };
+
+    addCopyRow("1. Output Name — paste into Aitum's Name field", "T0G TikTok", false);
+
+    const QString server = SessionState::tikTokServer();
+    const QString key = SessionState::tikTokKey();
+    addCopyRow("2. RTMP Server — paste into Aitum's Server / URL field",
+               server.isEmpty() ? "Create a TikTok LIVE in T0G first to get the current server" : server, false);
+    addCopyRow("3. Stream Key — paste into Aitum's Stream Key field",
+               key.isEmpty() ? "Create a TikTok LIVE in T0G first to get the current stream key" : key, true);
+
+    auto *note = new QLabel(
+        "<b>Then:</b> make sure the output is enabled, save Aitum Vertical Settings, close the window, "
+        "and press GO LIVE in T0G again.<br><br>"
+        "<b>Important:</b> the name must be exactly <code>T0G TikTok</code>. "
+        "Do not share your stream key with anyone.",
+        &dialog);
+    note->setWordWrap(true);
+    layout->addWidget(note);
+    layout->addStretch();
+
+    auto *buttons = new QDialogButtonBox(QDialogButtonBox::Close, &dialog);
+    connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+    layout->addWidget(buttons);
+    dialog.exec();
 }
 
 void T0GStreamDock::showPluginLogs()
@@ -323,13 +391,18 @@ void T0GStreamDock::showTikTokFallbackFailure(const QString &detail)
                     "Your RTMP server and stream key are still available.\n\n"
                     "Go to Settings > Current Stream Credentials / Fallback to copy them into "
                     "OBS, Aitum, Streamlabs, or another streaming program.\n\n"
-                    "Error: " + detail,
+                    "Error: " + detail + "\n\n"
+                    "Need help setting up Aitum? Open T0G > HELP > Aitum TikTok Setup Guide. "
+                    "It shows exactly what goes in each field and gives you COPY buttons.",
                     QMessageBox::NoButton, this);
-    auto *open = box.addButton("Open Settings", QMessageBox::AcceptRole);
+    auto *guide = box.addButton("Open Aitum Setup Guide", QMessageBox::AcceptRole);
+    auto *open = box.addButton("Open Settings", QMessageBox::ActionRole);
     box.addButton("Close", QMessageBox::RejectRole);
     box.exec();
 
-    if (box.clickedButton() == open)
+    if (box.clickedButton() == guide)
+        showAitumTikTokSetupGuide();
+    else if (box.clickedButton() == open)
         openSettings();
 }
 
