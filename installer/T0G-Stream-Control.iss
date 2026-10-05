@@ -58,5 +58,5 @@ begin
 end;
 
 [Run]
-Filename: "powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -File ""{app}\data\obs-plugins\t0g-stream-control\T0G-Diagnose.ps1"" -ObsRoot ""{app}"""; Description: "Run T0G plugin diagnostics"; Flags: postinstall waituntilterminated skipifsilent
+Filename: "{sysnative}\WindowsPowerShell\v1.0\powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -File ""{app}\data\obs-plugins\t0g-stream-control\T0G-Diagnose.ps1"" -ObsRoot ""{app}"""; Description: "Run T0G plugin diagnostics"; Flags: postinstall waituntilterminated skipifsilent
 Filename: "{app}\bin\64bit\obs64.exe"; Description: "Launch OBS Studio"; Flags: nowait postinstall skipifsilent unchecked
