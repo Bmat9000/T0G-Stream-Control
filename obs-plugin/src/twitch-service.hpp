@@ -15,6 +15,7 @@ public:
     QString clientId() const;
     bool connected() const;
     QString displayName() const;
+    QString loginName() const;
     void restore(Result done = {});
     void connectDevice(Result done);
     void disconnectAccount();
@@ -38,6 +39,7 @@ private:
     QString deviceCode;
     QString userId;
     QString userName;
+    QString userLogin;
     int pollInterval = 5;
     Result pendingConnect;
 };
