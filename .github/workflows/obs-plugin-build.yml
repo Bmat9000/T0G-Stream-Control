@@ -50,30 +50,31 @@ jobs:
           config: RelWithDebInfo
           package: false
 
-      - name: Create install-ready OBS package
+      - name: Create one-click Windows installer
         shell: pwsh
         run: |
           $pluginDll = Get-ChildItem -Path release -Recurse -Filter "t0g-stream-control.dll" | Select-Object -First 1
-          if (-not $pluginDll) {
-            throw "t0g-stream-control.dll was not found in the packaged release."
-          }
+          if (-not $pluginDll) { throw "t0g-stream-control.dll was not found in the packaged release." }
 
-          $installRoot = "release/T0G-Stream-Control-Install"
-          New-Item -ItemType Directory -Force -Path "$installRoot/obs-plugins/64bit" | Out-Null
-          Copy-Item -Force $pluginDll.FullName "$installRoot/obs-plugins/64bit/t0g-stream-control.dll"
+          $payload = "installer-payload"
+          New-Item -ItemType Directory -Force -Path "$payload/obs-plugins/64bit" | Out-Null
+          Copy-Item -Force $pluginDll.FullName "$payload/obs-plugins/64bit/t0g-stream-control.dll"
 
-          $pluginData = Get-ChildItem -Path release -Recurse -Directory |
-            Where-Object { $_.FullName -match 't0g-stream-control[\\/]data } |
-            Select-Object -First 1
-
+          $pluginData = Get-ChildItem -Path release -Recurse -Directory | Where-Object { $_.Name -eq "data" -and $_.Parent.Name -eq "t0g-stream-control" } | Select-Object -First 1
           if ($pluginData) {
-            New-Item -ItemType Directory -Force -Path "$installRoot/data/obs-plugins/t0g-stream-control" | Out-Null
-            Copy-Item -Recurse -Force "$($pluginData.FullName)/*" "$installRoot/data/obs-plugins/t0g-stream-control/"
+            New-Item -ItemType Directory -Force -Path "$payload/data/obs-plugins/t0g-stream-control" | Out-Null
+            Copy-Item -Recurse -Force "$($pluginData.FullName)/*" "$payload/data/obs-plugins/t0g-stream-control/"
           }
+
+          choco install innosetup --no-progress -y
+          & "${env:ProgramFiles(x86)}\\Inno Setup 6\\ISCC.exe" "t0g-source/installer/T0G-Stream-Control.iss"
+          if ($LASTEXITCODE -ne 0) { throw "Inno Setup failed with exit code $LASTEXITCODE" }
 
       - name: Upload T0G OBS plugin
         uses: actions/upload-artifact@v4
         with:
           name: T0G-Stream-Control-Windows
-          path: release/*
+          path: |
+            release/T0G-Stream-Control-Setup.exe
+            release/**/*.zip
           if-no-files-found: error
