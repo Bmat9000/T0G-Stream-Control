@@ -149,6 +149,12 @@ OBS is normally installed under `Program Files`, which is why administrator perm
 
 If OBS reports **Plugins Not Loaded** or the T0G plugin does not appear, check the OBS log and make sure the plugin and its required runtime DLLs were installed into the correct OBS directories.
 
+### Saved Streamlabs Login
+
+After a successful **LOAD FROM WEB** login, T0G saves only the Streamlabs API token in Windows Credential Manager. The stream title, game/category, and audience (including Mature / 18+) continue to use the plugin's existing settings and presets.
+
+With **Automatically restore saved Streamlabs API token when OBS starts** enabled and **Automatic / Streamlabs** mode selected, the saved token loads on startup. You do not need to log in again every time. If the token expires, is revoked, or you switch accounts, use **LOAD FROM WEB** again to replace it. If saving fails, T0G displays a warning and the login remains available for the current OBS session.
+
 ### 4. Set Up Streamlabs for TikTok
 
 The TikTok workflow uses the Streamlabs/TikTok access that the original project was built around.
