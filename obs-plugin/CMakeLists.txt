@@ -7,7 +7,7 @@ set(CMAKE_AUTOMOC ON)
 
 find_package(libobs REQUIRED)
 find_package(obs-frontend-api REQUIRED)
-find_package(Qt6 REQUIRED COMPONENTS Core Widgets Network WebSockets)
+find_package(Qt6 REQUIRED COMPONENTS Core Widgets Network)
 
 add_library(t0g-stream-control MODULE
   src/plugin-main.cpp
@@ -51,7 +51,6 @@ target_link_libraries(t0g-stream-control PRIVATE
   Qt6::Core
   Qt6::Widgets
   Qt6::Network
-  Qt6::WebSockets
   $<$<PLATFORM_ID:Windows>:advapi32>
 )
 
