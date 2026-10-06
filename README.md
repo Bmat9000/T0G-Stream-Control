@@ -27,6 +27,35 @@ Current project components include:
 - Runtime/plugin diagnostics and loader checks.
 - Windows installer and automated builds.
 
+## Feature Status
+
+### ✅ What It Has Now
+
+The core **T0G Stream Control** streaming features are working, including the native OBS dock, TikTok LIVE/stream controls, Twitch integration, stream title and game/category controls, TikTok RTMP/output handling, manual RTMP fallback, Aitum Vertical integration, saved settings/credentials, presets, preflight checks, and diagnostics.
+
+### 🚧 Coming Soon — Chat Read
+
+**Chat Read is actively being worked on right now.** This will allow the Chat Merger to receive and display supported chat and LIVE activity inside OBS, including:
+
+- Twitch chat messages.
+- TikTok LIVE chat messages.
+- TikTok LIVE gifts and supported LIVE events.
+- A combined Twitch + TikTok feed in the Chat Merger.
+
+The TikTok chat/event connection is being developed as **read-only first**.
+
+### 🔜 Coming Later — Chat Write
+
+**Chat Write is planned after Chat Read.** The goal is to add a message box to the Chat Merger so messages can be sent from one place.
+
+The planned controls are:
+
+- **Twitch** — send to Twitch chat.
+- **TikTok** — send to TikTok chat when a reliable supported implementation is available.
+- **Both** — send the same message to both platforms when both write connections are available.
+
+TikTok Chat Write is **not currently implemented** and is not being advertised as working. It will only be added if the project has a reliable way to send TikTok LIVE chat messages.
+
 ## Chat Merger — Coming Soon
 
 > **🚧 IN ACTIVE DEVELOPMENT:** Chat Merger, Twitch chat, TikTok LIVE chat, gifts, and related LIVE event features are currently being worked on and are **coming soon**. The rest of the core T0G Stream Control streaming functionality is working.
