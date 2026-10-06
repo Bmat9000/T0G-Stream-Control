@@ -28,6 +28,22 @@
 #include <QApplication>
 #include <QClipboard>
 
+namespace {
+void showStreamlabsTokenHelp(QWidget *parent)
+{
+    QMessageBox::information(parent, "Reload Streamlabs API Token",
+        "If the Streamlabs API token fails, it may have expired, been revoked, or lost account permissions.\n\n"
+        "1. In T0G SETTINGS, set TikTok Mode to Automatic / Streamlabs and save.\n"
+        "2. Click CONNECT TIKTOK in the T0G dock (the web login button).\n"
+        "3. In your browser, sign into Streamlabs with the intended TikTok account and complete authorization.\n"
+        "4. Return to OBS. T0G saves the replacement API token automatically.\n"
+        "5. Click REFRESH and check your account and LIVE access before retrying GO LIVE.\n\n"
+        "Your title, category and mature rating are saved separately. You do not need to enter them again.\n\n"
+        "If login still fails, check your internet connection and Streamlabs/TikTok LIVE permissions. "
+        "Never share your API token or stream key.");
+}
+}
+
 T0GStreamDock::T0GStreamDock(QWidget *parent) : QDockWidget("T0G Stream Control", parent)
 {
     setObjectName("T0GStreamControlDock");
@@ -185,6 +201,26 @@ T0GStreamDock::T0GStreamDock(QWidget *parent) : QDockWidget("T0G Stream Control"
     connect(twitchEnabled, &QCheckBox::toggled, this, [this] { updateReadyState(); });
     connect(tiktokEnabled, &QCheckBox::toggled, this, [this] { updateReadyState(); });
 
+    tiktok.tokenRejected = [this] {
+        // Queue the warning so network completion handlers can finish first.
+        QTimer::singleShot(0, this, [this] {
+            setTikTokStatus("Streamlabs token failed - reconnect TikTok");
+            tiktokUsername->setText("Unknown");
+            tiktokApproval->setText("Unknown");
+            tiktokCanLive->setText("Unknown");
+            auto *warning = new QMessageBox(QMessageBox::Warning, "Streamlabs Token Failed",
+                "The Streamlabs API token failed or was rejected. You may need to reload it.\n\n"
+                "Click CONNECT TIKTOK and complete the Streamlabs login again.\n\n"
+                "For full steps, open HELP > Reload Streamlabs API Token. "
+                "A 403 error can also mean your account lacks the required LIVE permissions.",
+                QMessageBox::Ok, this);
+            warning->setAttribute(Qt::WA_DeleteOnClose);
+            auto *help = warning->addButton("Reload Instructions", QMessageBox::HelpRole);
+            connect(help, &QPushButton::clicked, this, [this] { showStreamlabsTokenHelp(this); });
+            warning->open();
+        });
+    };
+
     settings = T0GSettings::load();
     twitch.setClientId(settings.twitchClientId);
     twitch.restore([this](bool ok, QString name) {
@@ -207,7 +243,7 @@ T0GStreamDock::T0GStreamDock(QWidget *parent) : QDockWidget("T0G Stream Control"
             setTikTokStatus("Restoring saved Streamlabs login...");
             refreshTikTokAccount();
         } else if (!error.isEmpty()) {
-            setTikTokStatus("Could not restore saved login - use LOAD FROM WEB");
+            setTikTokStatus("Could not restore saved login - use CONNECT TIKTOK");
         }
     }
 
@@ -273,7 +309,7 @@ void T0GStreamDock::refreshTikTokAccount()
 
     tiktok.getAccountInfo([this](TikTokAccountInfo info) {
         if (!info.ok) {
-            setTikTokStatus("Account info failed - retry LOAD FROM WEB if login expired");
+            setTikTokStatus("Account info failed - retry CONNECT TIKTOK if login expired");
             return;
         }
         tiktokUsername->setText(info.username.isEmpty() ? "Unknown" : info.username);
@@ -320,10 +356,13 @@ void T0GStreamDock::runGameSearch()
 void T0GStreamDock::openHelpMenu()
 {
     QMenu menu(this);
+    QAction *tokenHelp = menu.addAction("Reload Streamlabs API Token");
     QAction *aitumSetup = menu.addAction("Aitum TikTok Setup Guide");
     QAction *viewLogs = menu.addAction("View Logs");
     QAction *chosen = menu.exec(helpButton->mapToGlobal(QPoint(0, helpButton->height())));
-    if (chosen == aitumSetup)
+    if (chosen == tokenHelp)
+        showStreamlabsTokenHelp(this);
+    else if (chosen == aitumSetup)
         showAitumTikTokSetupGuide();
     else if (chosen == viewLogs)
         showPluginLogs();
@@ -527,7 +566,7 @@ void T0GStreamDock::startSelectedPlatforms()
         if (!tiktok.hasToken()) {
             setBusy(false);
             QMessageBox::warning(this, "TikTok not connected",
-                                 "Click LOAD FROM WEB first.");
+                                 "Click CONNECT TIKTOK first.");
             return;
         }
         startTikTok();
