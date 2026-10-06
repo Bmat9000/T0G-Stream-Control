@@ -2,7 +2,7 @@
 
 **T0G Stream Control** is a native Windows plugin for OBS Studio that brings TikTok LIVE and Twitch stream controls into OBS. The project is designed around a modular architecture so streaming, platform integrations, chat, vertical output, credentials, diagnostics, and future features can be developed independently without turning the plugin into one large component.
 
-> **Project status:** Active development. Some integrations depend on account access and third-party platform behavior that can change over time.
+> **Project status:** The core T0G Stream Control OBS plugin features are working. **Chat Merger and chat/LIVE event features are coming soon and are actively being worked on right now.** Some integrations depend on account access and third-party platform behavior that can change over time.
 
 ## What T0G Stream Control Does
 
@@ -17,19 +17,21 @@ Current project components include:
 - TikTok RTMP/output handling.
 - Manual RTMP fallback support.
 - Aitum Vertical integration for vertical TikTok output.
-- Combined Twitch + TikTok chat dock.
-- Read-only TikTok LIVE chat/event ingestion.
-- TikTok LIVE event support for features such as gifts and other LIVE activity.
-- Twitch chat integration.
+- **Coming soon / in active development:** Combined Twitch + TikTok Chat Merger dock.
+- **Coming soon / in active development:** Read-only TikTok LIVE chat/event ingestion.
+- **Coming soon / in active development:** TikTok LIVE gifts and other LIVE activity/events.
+- **Coming soon / in active development:** Twitch chat integration.
 - Saved plugin settings and credential storage.
 - Stream presets and session state.
 - Preflight checks before starting outputs.
 - Runtime/plugin diagnostics and loader checks.
 - Windows installer and automated builds.
 
-## Chat Merger
+## Chat Merger — Coming Soon
 
-The **Chat Merger** provides one OBS dock for supported Twitch and TikTok LIVE activity.
+> **🚧 IN ACTIVE DEVELOPMENT:** Chat Merger, Twitch chat, TikTok LIVE chat, gifts, and related LIVE event features are currently being worked on and are **coming soon**. The rest of the core T0G Stream Control streaming functionality is working.
+
+The **Chat Merger** is being built to provide one OBS dock for supported Twitch and TikTok LIVE activity.
 
 TikTok is currently treated as **read-only** on the chat side. The plugin can receive supported TikTok LIVE messages/events, but T0G Stream Control does not currently send chat messages back to TikTok.
 
