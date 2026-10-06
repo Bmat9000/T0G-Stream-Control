@@ -198,6 +198,19 @@ T0GStreamDock::T0GStreamDock(QWidget *parent) : QDockWidget("T0G Stream Control"
     tiktokEnabled->setChecked(settings.startTikTok);
     loadSavedStreamInfo();
 
+    // Credentials are independent of title, category and audience settings.
+    if (settings.autoLoadTikTok && settings.tiktokConnectionMode == 0) {
+        QString error;
+        const QString savedToken = CredentialStore::read("StreamlabsApiToken", &error);
+        if (!savedToken.isEmpty()) {
+            tiktok.setToken(savedToken);
+            setTikTokStatus("Restoring saved Streamlabs login...");
+            refreshTikTokAccount();
+        } else if (!error.isEmpty()) {
+            setTikTokStatus("Could not restore saved login - use LOAD FROM WEB");
+        }
+    }
+
     T0GLog::write("Dock initialized; Aitum Vertical detected=" + QString(aitumVertical.available() ? "true" : "false"));
     updateReadyState();
     setWidget(root);
@@ -231,12 +244,17 @@ void T0GStreamDock::loadTikTokFromWeb()
 {
     setBusy(true);
     setTikTokStatus("Waiting for Streamlabs web login...");
-    tiktok.loadTokenFromWeb([this](bool ok, QString, QString error) {
+    tiktok.loadTokenFromWeb([this](bool ok, QString token, QString error) {
         setBusy(false);
         if (!ok) {
             setTikTokStatus("Web login failed");
             QMessageBox::warning(this, "TikTok Web Login", error);
             return;
+        }
+        QString saveError;
+        if (!CredentialStore::write("StreamlabsApiToken", token, &saveError)) {
+            QMessageBox::warning(this, "Save Streamlabs Login",
+                "You are connected for this OBS session, but the API token could not be saved.\n\n" + saveError);
         }
         setTikTokStatus("Connected through Streamlabs");
         refreshTikTokAccount();
@@ -255,7 +273,7 @@ void T0GStreamDock::refreshTikTokAccount()
 
     tiktok.getAccountInfo([this](TikTokAccountInfo info) {
         if (!info.ok) {
-            setTikTokStatus("Account info failed");
+            setTikTokStatus("Account info failed - retry LOAD FROM WEB if login expired");
             return;
         }
         tiktokUsername->setText(info.username.isEmpty() ? "Unknown" : info.username);
