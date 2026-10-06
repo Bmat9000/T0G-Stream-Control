@@ -16,6 +16,7 @@ public:
     bool connected() const;
     QString displayName() const;
     QString loginName() const;
+    QString accountId() const;
     void restore(Result done = {});
     void connectDevice(Result done);
     void disconnectAccount();
