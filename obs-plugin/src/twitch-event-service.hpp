@@ -1,11 +1,12 @@
 #pragma once
 #include <QObject>
 #include <QString>
+#include <QUrl>
 #include "chat-message.hpp"
 
 class QNetworkAccessManager;
+class QSslSocket;
 class QTimer;
-class QWebSocket;
 
 class TwitchEventService final : public QObject {
     Q_OBJECT
@@ -20,16 +21,22 @@ signals:
 
 private:
     void openSocket(const QUrl &url=QUrl("wss://eventsub.wss.twitch.tv/ws"));
-    void handleSocketMessage(const QString &text);
+    void handleSocketData();
+    void handleTextMessage(const QString &text);
     void createSubscriptions(const QString &sessionId);
     void createSubscription(const QString &type, const QJsonObject &condition);
     void handleNotification(const QString &type, const QJsonObject &event);
+    void closeSocket();
     QString accessToken() const;
 
-    QWebSocket *socket{};
+    QSslSocket *socket{};
     QNetworkAccessManager *net{};
     QTimer *watchdog{};
+    QByteArray socketBuffer;
+    QByteArray websocketKey;
+    QUrl socketUrl;
     QString broadcasterId;
     QString sessionId;
     bool stopping=false;
+    bool handshakeComplete=false;
 };
