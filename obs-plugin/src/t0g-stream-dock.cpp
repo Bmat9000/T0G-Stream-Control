@@ -191,11 +191,13 @@ T0GStreamDock::T0GStreamDock(QWidget *parent) : QDockWidget("T0G Stream Control"
         setTwitchStatus(ok ? ("Connected as " + name) : "Ready when OBS is configured");
         if (ok)
             emit twitchChatIdentityChanged(twitch.loginName());
+            emit twitchEventIdentityChanged(twitch.accountId());
     });
     connect(&twitch, &TwitchService::accountChanged, this, [this] {
         const QString name = twitch.displayName();
         setTwitchStatus(name.isEmpty() ? "Ready when OBS is configured" : ("Connected as " + name));
         emit twitchChatIdentityChanged(twitch.loginName());
+            emit twitchEventIdentityChanged(twitch.accountId());
     });
     twitchEnabled->setChecked(settings.startTwitch);
     tiktokEnabled->setChecked(settings.startTikTok);
