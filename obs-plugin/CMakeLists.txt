@@ -7,7 +7,7 @@ set(CMAKE_AUTOMOC ON)
 
 find_package(libobs REQUIRED)
 find_package(obs-frontend-api REQUIRED)
-find_package(Qt6 REQUIRED COMPONENTS Core Widgets Network)
+find_package(Qt6 REQUIRED COMPONENTS Core Widgets Network WebSockets)
 
 add_library(t0g-stream-control MODULE
   src/plugin-main.cpp
@@ -39,6 +39,8 @@ add_library(t0g-stream-control MODULE
   src/chat-merger-dock.hpp
   src/twitch-chat-service.cpp
   src/twitch-chat-service.hpp
+  src/twitch-event-service.cpp
+  src/twitch-event-service.hpp
   src/tiktok-chat-service.cpp
   src/tiktok-chat-service.hpp
 )
@@ -49,6 +51,7 @@ target_link_libraries(t0g-stream-control PRIVATE
   Qt6::Core
   Qt6::Widgets
   Qt6::Network
+  Qt6::WebSockets
   $<$<PLATFORM_ID:Windows>:advapi32>
 )
 
