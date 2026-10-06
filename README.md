@@ -108,32 +108,120 @@ The OBS plugin is intentionally split into focused modules. Current source areas
 
 Keeping these pieces separate makes individual features easier to test, replace, disable, and update.
 
-## Download
+## Full Setup Guide
 
-### Windows Installer
+Follow these steps from top to bottom for a first-time setup.
+
+### 1. Download T0G Stream Control
 
 The Windows build produces:
 
 `T0G-Stream-Control-Setup.exe`
 
-Download the current installer from the project's latest installer release:
+[**Download the latest T0G Stream Control installer**](https://github.com/Bmat9000/T0G-TikTok-Live-Tools/releases/download/t0g-stream-control-latest/T0G-Stream-Control-Setup.exe)
 
-[**Download T0G Stream Control for Windows**](https://github.com/Bmat9000/T0G-TikTok-Live-Tools/releases/download/t0g-stream-control-latest/T0G-Stream-Control-Setup.exe)
+Close OBS Studio before running the installer.
 
-The installer is published by the OBS plugin build workflow so the link can continue pointing to the current installer.
+### 2. Windows May Warn That the Installer Is Unrecognized or Not Trusted
 
-## Installation
+T0G Stream Control is currently distributed **without a paid code-signing certificate**.
 
-1. Close OBS Studio.
-2. Download `T0G-Stream-Control-Setup.exe`.
-3. Run the installer.
-4. Allow administrator permission when requested. OBS is normally installed under `Program Files`, so installation may require elevation.
-5. Select or confirm your OBS Studio installation.
-6. Finish the installation.
-7. Start OBS Studio.
-8. Open the T0G Stream Control dock from OBS if it is not already visible.
+Because the installer is not digitally signed yet, Windows/SmartScreen or your browser may show a warning such as **Unknown Publisher**, **Windows protected your PC**, **unrecognized app**, or another unsupported/not-trusted warning.
 
-If OBS reports that the plugin failed to load, check the OBS log and verify that the plugin and its required runtime DLLs were installed into the correct OBS directories.
+That warning does not automatically mean the installer contains malware. It means Windows cannot verify the publisher through a trusted code-signing certificate.
+
+Code-signing certificates cost money and the project does not currently have one. Since the project source code is available in this repository for users to inspect, build, and review, signing has not been treated as a requirement yet. If enough users care about having a signed installer, code signing can be added later.
+
+**Only download the installer from this repository's official release/download link.** Do not bypass security warnings for copies downloaded from random websites or reuploads.
+
+If Windows SmartScreen displays **Windows protected your PC**, verify that you downloaded the installer from this repository before choosing **More info** and **Run anyway**.
+
+### 3. Run the Installer
+
+1. Run `T0G-Stream-Control-Setup.exe`.
+2. Allow administrator permission if Windows asks for it.
+3. Confirm/select your OBS Studio installation directory.
+4. Complete the installation.
+5. Start OBS Studio.
+6. Open the **T0G Stream Control** dock from OBS if it is not already visible.
+
+OBS is normally installed under `Program Files`, which is why administrator permission may be required.
+
+If OBS reports **Plugins Not Loaded** or the T0G plugin does not appear, check the OBS log and make sure the plugin and its required runtime DLLs were installed into the correct OBS directories.
+
+### 4. Set Up Streamlabs for TikTok
+
+The TikTok workflow uses the Streamlabs/TikTok access that the original project was built around.
+
+You need a TikTok account with the required LIVE/Streamlabs streaming access.
+
+1. Install Streamlabs Desktop if you do not already have it.
+2. Open Streamlabs.
+3. Sign in/connect using the TikTok account you want to stream from.
+4. Make sure that account has access to TikTok LIVE through Streamlabs.
+5. Complete any TikTok or Streamlabs authorization that is requested.
+6. Once the account is connected and working in Streamlabs, return to OBS and T0G Stream Control.
+
+The original project included the ability to retrieve the Streamlabs/TikTok information needed to create the TikTok LIVE session and obtain the RTMP destination/stream key. T0G Stream Control builds on that foundation and moves the workflow into the OBS plugin.
+
+If your TikTok account does not have the required LIVE/Streamlabs access, the plugin cannot create access that TikTok has not granted to the account.
+
+### 5. Configure TikTok in T0G Stream Control
+
+Open the T0G Stream Control settings/dock in OBS and configure the TikTok side of your stream.
+
+The TikTok module handles the TikTok LIVE/session workflow and the RTMP information used by the TikTok output. Manual RTMP support is also available as a fallback when you already have a TikTok server URL and stream key.
+
+Treat your TikTok stream key, Streamlabs token, cookies, and other authentication information as passwords. Never post them publicly.
+
+### 6. Configure Twitch
+
+Connect/configure the Twitch account you want to stream from in T0G Stream Control.
+
+Twitch is handled by its own module so Twitch authentication, metadata, and streaming controls remain separate from the TikTok implementation.
+
+Once configured, the shared controls can be used for supported stream information such as the stream title and game/category.
+
+### 7. Set Up Aitum Vertical for TikTok
+
+If you want TikTok to use a vertical layout while Twitch uses your normal landscape OBS stream, install and configure **Aitum Vertical**.
+
+T0G Stream Control includes an Aitum integration module, but Aitum Vertical itself is a separate OBS plugin and is not bundled with this installer.
+
+Set up your vertical scenes in Aitum/OBS before your first multi-platform stream.
+
+A typical setup is:
+
+- **Twitch:** normal landscape OBS output.
+- **TikTok:** vertical Aitum output.
+- **T0G Stream Control:** manages the platform-specific stream workflow and controls from OBS.
+
+### 8. Check Your Stream Information
+
+Before going live:
+
+1. Confirm the correct Twitch and TikTok accounts are configured.
+2. Enter/check your stream title.
+3. Enter/check your game or category.
+4. Confirm the TikTok RTMP/session information is available.
+5. Confirm your Twitch output is configured.
+6. Confirm your Aitum vertical scene/output if you are using vertical TikTok.
+7. Run/check the available T0G preflight and status information.
+8. Make sure OBS is not reporting plugin or output errors.
+
+### 9. Go Live
+
+Once everything passes your checks, start the outputs you want to use.
+
+The intended setup allows the normal landscape stream and the TikTok vertical stream to be controlled from the same OBS-based workflow instead of constantly switching between separate applications.
+
+### 10. Chat Features
+
+The streaming/control side is working now. The **Chat Merger is the part currently under active development**.
+
+**Chat Read — coming soon:** Twitch chat, TikTok LIVE chat, TikTok gifts/LIVE events, and the combined Twitch + TikTok feed.
+
+**Chat Write — planned after Chat Read:** a message box with Twitch / TikTok / Both selections. TikTok writing will only be marked as supported after a reliable implementation exists.
 
 ## Requirements
 
