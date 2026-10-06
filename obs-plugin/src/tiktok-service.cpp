@@ -42,6 +42,15 @@ QHttpPart textPart(const char *name, const QString &value)
 TikTokService::TikTokService(QObject *parent) : QObject(parent)
 {
     network = new QNetworkAccessManager(this);
+    connect(network, &QNetworkAccessManager::finished, this, [this](QNetworkReply *reply) {
+        const int status = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+        const QByteArray auth = reply->request().rawHeader("Authorization");
+        if ((status == 401 || status == 403) && !bearerToken.isEmpty() &&
+            auth == QByteArray("Bearer ") + bearerToken.toUtf8()) {
+            bearerToken.clear();
+            if (tokenRejected) tokenRejected();
+        }
+    });
 }
 
 void TikTokService::setToken(const QString &token)
