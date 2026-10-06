@@ -23,9 +23,11 @@ public:
     void triggerGoLive() { startSelectedPlatforms(); }
     void triggerEndLive() { stopSelectedPlatforms(); }
     QString twitchChatLogin() const { return twitch.loginName(); }
+    QString twitchAccountId() const { return twitch.accountId(); }
 
 signals:
     void twitchChatIdentityChanged(QString login);
+    void twitchEventIdentityChanged(QString accountId);
     void tiktokChatIdentityChanged(QString username);
 
 private:
