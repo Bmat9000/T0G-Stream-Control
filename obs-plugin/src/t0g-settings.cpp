@@ -172,7 +172,7 @@ T0GSettingsDialog::T0GSettingsDialog(const T0GSettings &cfg, QWidget *parent) : 
 
     auto *general = new QGroupBox("General", content);
     auto *generalLayout = new QVBoxLayout(general);
-    autoLoadTikTok = new QCheckBox("Automatically load TikTok login from Streamlabs when OBS starts", general);
+    autoLoadTikTok = new QCheckBox("Automatically restore saved Streamlabs API token when OBS starts", general);
     rememberStreamInfo = new QCheckBox("Remember last stream title, game and audience", general);
     confirmBeforeEnd = new QCheckBox("Confirm before ending all selected streams", general);
     generalLayout->addWidget(autoLoadTikTok);
