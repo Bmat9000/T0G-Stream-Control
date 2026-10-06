@@ -22,6 +22,7 @@ QString TwitchService::refreshToken()const{return CredentialStore::read("TwitchO
 bool TwitchService::connected()const{return !userId.isEmpty()&&!accessToken().isEmpty();}
 QString TwitchService::displayName()const{return userName;}
 QString TwitchService::loginName()const{return userLogin;}
+QString TwitchService::accountId()const{return userId;}
 void TwitchService::persistTokens(const QString&a,const QString&r){QString e;CredentialStore::write("TwitchOAuthAccess",a,&e);if(!r.isEmpty())CredentialStore::write("TwitchOAuthRefresh",r,&e);}
 void TwitchService::disconnectAccount(){pollTimer->stop();CredentialStore::remove("TwitchOAuthAccess");CredentialStore::remove("TwitchOAuthRefresh");userId.clear();userName.clear();userLogin.clear();emit accountChanged();}
 
@@ -32,7 +33,7 @@ void TwitchService::connectDevice(Result done){
     if(client.isEmpty()){done(false,"Enter the Twitch Client ID in Settings first.");return;}
     QNetworkRequest req(QUrl("https://id.twitch.tv/oauth2/device"));
     req.setHeader(QNetworkRequest::ContentTypeHeader,"application/x-www-form-urlencoded");
-    QUrlQuery q;q.addQueryItem("client_id",client);q.addQueryItem("scopes","channel:manage:broadcast chat:read");
+    QUrlQuery q;q.addQueryItem("client_id",client);q.addQueryItem("scopes","channel:manage:broadcast chat:read channel:read:subscriptions bits:read");
     auto *r=net->post(req,q.query(QUrl::FullyEncoded).toUtf8());
     connect(r,&QNetworkReply::finished,this,[this,r,done]{
         const auto o=QJsonDocument::fromJson(r->readAll()).object();r->deleteLater();
@@ -47,7 +48,7 @@ void TwitchService::pollDevice(){
     if(deviceCode.isEmpty()){pollTimer->stop();return;}
     QNetworkRequest req(QUrl("https://id.twitch.tv/oauth2/token"));
     req.setHeader(QNetworkRequest::ContentTypeHeader,"application/x-www-form-urlencoded");
-    QUrlQuery q;q.addQueryItem("client_id",client);q.addQueryItem("scope","channel:manage:broadcast chat:read");
+    QUrlQuery q;q.addQueryItem("client_id",client);q.addQueryItem("scope","channel:manage:broadcast chat:read channel:read:subscriptions bits:read");
     q.addQueryItem("device_code",deviceCode);q.addQueryItem("grant_type","urn:ietf:params:oauth:grant-type:device_code");
     auto *r=net->post(req,q.query(QUrl::FullyEncoded).toUtf8());
     connect(r,&QNetworkReply::finished,this,[this,r]{
