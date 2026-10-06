@@ -193,6 +193,12 @@ jobs:
             Copy-Item -Force $tls.FullName "$payload/bin/64bit/tls/$($tls.Name)"
           }
 
+          $webSocketsDll = Get-ChildItem -Path ".deps" -Recurse -Filter "Qt6WebSockets.dll" -ErrorAction SilentlyContinue |
+            Select-Object -First 1
+          if (-not $webSocketsDll) { throw "Qt6WebSockets.dll was not found in the OBS dependency bundle." }
+          New-Item -ItemType Directory -Force -Path "$payload/bin/64bit" | Out-Null
+          Copy-Item -Force $webSocketsDll.FullName "$payload/bin/64bit/Qt6WebSockets.dll"
+
           $localTikTok = "local-chat-runtime/piratetok.dll"
           if (-not (Test-Path $localTikTok)) { throw "Local TikTok chat runtime is missing." }
           New-Item -ItemType Directory -Force -Path "$payload/bin/64bit" | Out-Null
