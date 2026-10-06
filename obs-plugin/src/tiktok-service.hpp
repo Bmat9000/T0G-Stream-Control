@@ -21,6 +21,9 @@ class TikTokService final : public QObject {
 public:
     explicit TikTokService(QObject *parent = nullptr);
 
+    // Called once when the current bearer token is rejected by Streamlabs.
+    std::function<void()> tokenRejected;
+
     void setToken(const QString &token);
     bool hasToken() const;
     QString token() const;
