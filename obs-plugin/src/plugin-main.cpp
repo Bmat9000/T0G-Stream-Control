@@ -7,6 +7,7 @@
 #include "chat-merger-dock.hpp"
 #include "chat-feed.hpp"
 #include "twitch-chat-service.hpp"
+#include "twitch-event-service.hpp"
 #include "tiktok-chat-service.hpp"
 
 OBS_DECLARE_MODULE()
@@ -16,6 +17,7 @@ static T0GStreamDock *g_dock = nullptr;
 static ChatMergerDock *g_chatDock = nullptr;
 static ChatFeed *g_chatFeed = nullptr;
 static TwitchChatService *g_twitchChat = nullptr;
+static TwitchEventService *g_twitchEvents = nullptr;
 static TikTokChatService *g_tiktokChat = nullptr;
 static obs_hotkey_id g_goLive = OBS_INVALID_HOTKEY_ID;
 static obs_hotkey_id g_endLive = OBS_INVALID_HOTKEY_ID;
@@ -71,6 +73,10 @@ MODULE_EXPORT bool obs_module_load(void)
                          [=](bool connected, const QString &detail) { g_chatDock->setTwitchState(connected, detail); });
         QObject::connect(g_dock, &T0GStreamDock::twitchChatIdentityChanged, g_twitchChat,
                          [=](const QString &login) { g_twitchChat->start(login); });
+        g_twitchEvents = new TwitchEventService(mainWindow);
+        QObject::connect(g_twitchEvents, &TwitchEventService::eventReceived, g_chatFeed, &ChatFeed::publish);
+        QObject::connect(g_dock, &T0GStreamDock::twitchEventIdentityChanged, g_twitchEvents,
+                         [=](const QString &id) { g_twitchEvents->start(id); });
         g_tiktokChat = new TikTokChatService(mainWindow);
         QObject::connect(g_tiktokChat, &TikTokChatService::messageReceived, g_chatFeed, &ChatFeed::publish);
         QObject::connect(g_tiktokChat, &TikTokChatService::connectionChanged, g_chatDock,
@@ -80,6 +86,9 @@ MODULE_EXPORT bool obs_module_load(void)
         const QString existingTwitchLogin = g_dock->twitchChatLogin();
         if (!existingTwitchLogin.isEmpty())
             g_twitchChat->start(existingTwitchLogin);
+        const QString existingTwitchId = g_dock->twitchAccountId();
+        if (!existingTwitchId.isEmpty())
+            g_twitchEvents->start(existingTwitchId);
         mainWindow->addDockWidget(Qt::RightDockWidgetArea, g_chatDock);
         g_chatDock->show();
         debug_log("T0G Chat Merger dock added and shown");
@@ -111,5 +120,6 @@ MODULE_EXPORT void obs_module_unload(void)
     g_chatDock = nullptr;
     g_chatFeed = nullptr;
     g_twitchChat = nullptr;
+    g_twitchEvents = nullptr;
     g_tiktokChat = nullptr;
 }
