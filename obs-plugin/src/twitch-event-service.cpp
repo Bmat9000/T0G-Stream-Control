@@ -267,21 +267,25 @@ void TwitchEventService::handleNotification(const QString &type,const QJsonObjec
     if(type=="channel.subscribe") {
         if(event.value("is_gift").toBool()) return;
         m.type=ChatEventType::Subscription;
+        m.eventKey="new_sub";
         m.message=QString::fromUtf8("⭐ Subscribed • %1").arg(tierName(event.value("tier").toString()));
     } else if(type=="channel.subscription.message") {
         m.type=ChatEventType::Subscription;
+        m.eventKey="resub";
         const int months=event.value("cumulative_months").toInt();
         const QString text=event.value("message").toObject().value("text").toString();
         m.message=QString::fromUtf8("⭐ Resubscribed • %1 month%2").arg(months).arg(months==1?"":"s");
         if(!text.isEmpty()) m.message+=" — "+text;
     } else if(type=="channel.subscription.gift") {
         m.type=ChatEventType::Subscription;
+        m.eventKey="gifted_sub";
         const bool anon=event.value("is_anonymous").toBool();
         const int total=event.value("total").toInt();
         if(anon){m.username.clear();m.displayName="Anonymous";}
         m.message=QString::fromUtf8("🎁 Gifted %1 sub%2 • %3").arg(total).arg(total==1?"":"s").arg(tierName(event.value("tier").toString()));
     } else if(type=="channel.cheer") {
         m.type=ChatEventType::Gift;
+        m.eventKey="bits";
         const bool anon=event.value("is_anonymous").toBool();
         if(anon){m.username.clear();m.displayName="Anonymous";}
         const int bits=event.value("bits").toInt();
@@ -290,6 +294,7 @@ void TwitchEventService::handleNotification(const QString &type,const QJsonObjec
         if(!text.isEmpty()) m.message+=" — "+text;
     } else if(type=="channel.raid") {
         m.type=ChatEventType::Share;
+        m.eventKey="raid";
         m.userId=event.value("from_broadcaster_user_id").toString();
         m.username=event.value("from_broadcaster_user_login").toString();
         m.displayName=event.value("from_broadcaster_user_name").toString();
