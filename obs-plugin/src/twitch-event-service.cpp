@@ -4,6 +4,7 @@
 
 #include <QCryptographicHash>
 #include <QJsonDocument>
+#include <QJsonArray>
 #include <QJsonObject>
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
