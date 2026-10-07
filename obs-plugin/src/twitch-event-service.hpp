@@ -18,6 +18,7 @@ public:
 signals:
     void eventReceived(ChatMessage message);
     void stateChanged(bool connected, QString detail);
+    void viewerCountChanged(int viewers);
 
 private:
     void openSocket(const QUrl &url=QUrl("wss://eventsub.wss.twitch.tv/ws"));
@@ -27,11 +28,13 @@ private:
     void createSubscription(const QString &type, const QJsonObject &condition);
     void handleNotification(const QString &type, const QJsonObject &event);
     void closeSocket();
+    void refreshViewerCount();
     QString accessToken() const;
 
     QSslSocket *socket{};
     QNetworkAccessManager *net{};
     QTimer *watchdog{};
+    QTimer *viewerTimer{};
     QByteArray socketBuffer;
     QByteArray websocketKey;
     QUrl socketUrl;
