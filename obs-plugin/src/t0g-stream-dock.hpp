@@ -24,7 +24,7 @@ public:
     void triggerEndLive() { stopSelectedPlatforms(); }
     QString twitchChatLogin() const { return twitch.loginName(); }
     QString twitchAccountId() const { return twitch.accountId(); }
-    QString tiktokChatUsername() const { return settings.tiktokChatTestUsername.trimmed().isEmpty() ? currentTikTokUsername : settings.tiktokChatTestUsername.trimmed(); }
+    QString tiktokChatUsername() const { return currentTikTokUsername; }
 
 signals:
     void twitchChatIdentityChanged(QString login);
