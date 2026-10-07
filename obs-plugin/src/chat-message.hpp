@@ -12,6 +12,7 @@ struct ChatMessage {
     QString username;
     QString displayName;
     QString message;
+    QString eventKey; // optional subtype: new_sub, resub, gifted_sub, bits, raid
     QUrl avatarUrl;
 
     QString giftName;
