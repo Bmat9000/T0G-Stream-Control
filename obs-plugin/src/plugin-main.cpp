@@ -1,6 +1,7 @@
 #include <obs-module.h>
 #include <obs-frontend-api.h>
 #include <QMainWindow>
+#include <QSettings>
 #include <windows.h>
 #include <cstdio>
 #include "t0g-stream-dock.hpp"
@@ -83,13 +84,25 @@ MODULE_EXPORT bool obs_module_load(void)
         QObject::connect(g_tiktokChat, &TikTokChatService::connectionChanged, g_chatDock,
                          [=](bool connected, const QString &detail) { g_chatDock->setTikTokState(connected, detail); });
         QObject::connect(g_dock, &T0GStreamDock::tiktokChatIdentityChanged, g_tiktokChat,
-                         [=](const QString &username) { g_tiktokChat->start(username); });
+                         [=](const QString &username) {
+                             QSettings s("T0G","T0G Chat Merger");
+                             const QString test=s.value("tiktok/testUsername").toString().trimmed();
+                             g_tiktokChat->start(test.isEmpty()?username:test);
+                         });
+        QObject::connect(g_chatDock, &ChatMergerDock::tikTokTestUsernameChanged, g_tiktokChat,
+                         [=](const QString &username) {
+                             const QString target=username.trimmed().isEmpty()?g_dock->tiktokChatUsername():username.trimmed();
+                             if(!target.isEmpty()) g_tiktokChat->start(target);
+                         });
         const QString existingTwitchLogin = g_dock->twitchChatLogin();
         if (!existingTwitchLogin.isEmpty())
             g_twitchChat->start(existingTwitchLogin);
         const QString existingTwitchId = g_dock->twitchAccountId();
         if (!existingTwitchId.isEmpty())
             g_twitchEvents->start(existingTwitchId);
+        QSettings chatSettings("T0G","T0G Chat Merger");
+        const QString testTikTok=chatSettings.value("tiktok/testUsername").toString().trimmed();
+        if(!testTikTok.isEmpty()) g_tiktokChat->start(testTikTok);
         mainWindow->addDockWidget(Qt::RightDockWidgetArea, g_chatDock);
         g_chatDock->show();
         debug_log("T0G Chat Merger dock added and shown");
