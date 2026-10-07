@@ -17,10 +17,20 @@ class QListWidget;
 class QTimer;
 
 class T0GStreamDock final : public QDockWidget {
+    Q_OBJECT
 public:
     explicit T0GStreamDock(QWidget *parent = nullptr);
     void triggerGoLive() { startSelectedPlatforms(); }
     void triggerEndLive() { stopSelectedPlatforms(); }
+    QString twitchChatLogin() const { return twitch.loginName(); }
+    QString twitchAccountId() const { return twitch.accountId(); }
+    QString tiktokChatUsername() const { return currentTikTokUsername; }
+
+signals:
+    void twitchChatIdentityChanged(QString login);
+    void twitchEventIdentityChanged(QString accountId);
+    void tiktokChatIdentityChanged(QString username);
+    void tiktokLiveCreated();
 
 private:
     void updateReadyState();
@@ -38,6 +48,7 @@ private:
     void startSelectedPlatforms();
     void stopSelectedPlatforms();
     void startTikTok();
+    bool startTwitchAfterTikTok();
     bool startManualTwitch();
     bool startManualTikTok();
     void setBusy(bool busy);
@@ -74,6 +85,7 @@ private:
     AitumVertical aitumVertical;
     bool usingAitumVertical = false;
     QString activeTikTokStreamId;
+    QString currentTikTokUsername;
     QString selectedTikTokCategoryId;
     bool busy = false;
     T0GSettings settings;

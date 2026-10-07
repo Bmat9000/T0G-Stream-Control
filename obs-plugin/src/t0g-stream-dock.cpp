@@ -225,10 +225,15 @@ T0GStreamDock::T0GStreamDock(QWidget *parent) : QDockWidget("T0G Stream Control"
     twitch.setClientId(settings.twitchClientId);
     twitch.restore([this](bool ok, QString name) {
         setTwitchStatus(ok ? ("Connected as " + name) : "Ready when OBS is configured");
+        if (ok)
+            emit twitchChatIdentityChanged(twitch.loginName());
+            emit twitchEventIdentityChanged(twitch.accountId());
     });
     connect(&twitch, &TwitchService::accountChanged, this, [this] {
         const QString name = twitch.displayName();
         setTwitchStatus(name.isEmpty() ? "Ready when OBS is configured" : ("Connected as " + name));
+        emit twitchChatIdentityChanged(twitch.loginName());
+            emit twitchEventIdentityChanged(twitch.accountId());
     });
     twitchEnabled->setChecked(settings.startTwitch);
     tiktokEnabled->setChecked(settings.startTikTok);
@@ -313,6 +318,9 @@ void T0GStreamDock::refreshTikTokAccount()
             return;
         }
         tiktokUsername->setText(info.username.isEmpty() ? "Unknown" : info.username);
+        if (!info.username.isEmpty())
+            currentTikTokUsername=info.username;
+            emit tiktokChatIdentityChanged(tiktokChatUsername());
         tiktokApproval->setText(info.status.isEmpty() ? "Unknown" : info.status);
         tiktokCanLive->setText(info.canGoLive ? "True" : "False");
         setTikTokStatus(info.canGoLive ? "Connected through Streamlabs" : "Connected - LIVE unavailable");
@@ -538,23 +546,27 @@ void T0GStreamDock::startSelectedPlatforms()
     saveStreamInfo();
     setBusy(true);
 
-    if (twitchEnabled->isChecked() && settings.startTwitch) {
-        if (settings.twitchConnectionMode == 1) {
-            if (!startManualTwitch()) {
-                setBusy(false);
-                return;
-            }
-        } else if (!obs_frontend_streaming_active()) {
-            setTwitchStatus("Starting...");
-            obs_frontend_streaming_start();
-        } else {
-            setTwitchStatus("LIVE");
+    // When TikTok is selected, create/configure it before starting OBS/Twitch.
+    // Aitum auto-starts enabled outputs when OBS streaming begins, so starting
+    // Twitch first can launch T0G TikTok once with yesterday's/stale key.
+    const bool deferTwitchForTikTok =
+        twitchEnabled->isChecked() && settings.startTwitch &&
+        tiktokEnabled->isChecked() && settings.startTikTok;
+
+    if (twitchEnabled->isChecked() && settings.startTwitch && !deferTwitchForTikTok) {
+        if (!startTwitchAfterTikTok()) {
+            setBusy(false);
+            return;
         }
     }
 
     if (tiktokEnabled->isChecked() && settings.startTikTok) {
         if (settings.tiktokConnectionMode == 1) {
             if (!startManualTikTok()) {
+                setBusy(false);
+                return;
+            }
+            if (deferTwitchForTikTok && !startTwitchAfterTikTok()) {
                 setBusy(false);
                 return;
             }
@@ -575,6 +587,23 @@ void T0GStreamDock::startSelectedPlatforms()
 
     setBusy(false);
     endLiveButton->setEnabled(true);
+}
+
+bool T0GStreamDock::startTwitchAfterTikTok()
+{
+    if (!twitchEnabled->isChecked() || !settings.startTwitch)
+        return true;
+
+    if (settings.twitchConnectionMode == 1)
+        return startManualTwitch();
+
+    if (!obs_frontend_streaming_active()) {
+        setTwitchStatus("Starting...");
+        obs_frontend_streaming_start();
+    } else {
+        setTwitchStatus("LIVE");
+    }
+    return true;
 }
 
 bool T0GStreamDock::startManualTwitch()
@@ -643,6 +672,7 @@ void T0GStreamDock::startTikTok()
                     return;
                 }
                 activeTikTokStreamId = result.streamId;
+                emit tiktokLiveCreated();
                 SessionState::setTikTokCredentials(result.server, result.key, result.streamId);
                 QString outputError;
                 usingAitumVertical = settings.tiktokOutputTestMode == 0 && settings.preferVertical && aitumVertical.available();
@@ -655,7 +685,7 @@ void T0GStreamDock::startTikTok()
                         showTikTokFallbackFailure(outputError); return;
                     }
                     setTikTokStatus("LIVE - Aitum Vertical");
-                    if (twitchEnabled->isChecked()) setTwitchStatus(obs_frontend_streaming_active() ? "LIVE" : "Starting...");
+                    if (!startTwitchAfterTikTok()) { setBusy(false); return; }
                     setBusy(false); endLiveButton->setEnabled(true); return;
                 }
                 setTikTokStatus(settings.tiktokOutputTestMode == 1 ? "Starting Direct OBS RTMP Test..." : "Configuring OBS fallback output...");
@@ -664,7 +694,7 @@ void T0GStreamDock::startTikTok()
                     setBusy(false); endLiveButton->setEnabled(true); showTikTokFallbackFailure(outputError); return;
                 }
                 setTikTokStatus(settings.tiktokOutputTestMode == 1 ? "LIVE - Direct OBS RTMP Test" : "LIVE");
-                if (twitchEnabled->isChecked()) setTwitchStatus(obs_frontend_streaming_active() ? "LIVE" : "Starting...");
+                if (!startTwitchAfterTikTok()) { setBusy(false); return; }
                 setBusy(false); endLiveButton->setEnabled(true);
             });
         return;
@@ -691,6 +721,7 @@ void T0GStreamDock::startTikTok()
                     }
 
                     activeTikTokStreamId = result.streamId;
+                    emit tiktokLiveCreated();
 
                     // Session-only fallback credentials. Never logged.
                     SessionState::setTikTokCredentials(result.server, result.key, result.streamId);
@@ -711,8 +742,7 @@ void T0GStreamDock::startTikTok()
                         }
 
                         setTikTokStatus("LIVE - Aitum Vertical");
-                        if (twitchEnabled->isChecked())
-                            setTwitchStatus(obs_frontend_streaming_active() ? "LIVE" : "Starting...");
+                        if (!startTwitchAfterTikTok()) { setBusy(false); return; }
                         setBusy(false);
                         endLiveButton->setEnabled(true);
                         return;
@@ -736,8 +766,7 @@ void T0GStreamDock::startTikTok()
                     }
 
                     setTikTokStatus(settings.tiktokOutputTestMode == 1 ? "LIVE - Direct OBS RTMP Test" : "LIVE");
-                    if (twitchEnabled->isChecked())
-                        setTwitchStatus(obs_frontend_streaming_active() ? "LIVE" : "Starting...");
+                    if (!startTwitchAfterTikTok()) { setBusy(false); return; }
                     setBusy(false);
                     endLiveButton->setEnabled(true);
                 });

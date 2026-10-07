@@ -51,6 +51,16 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
   src/tiktok-service.hpp
   src/tiktok-output.cpp
   src/tiktok-output.hpp
+  src/chat-message.hpp
+  src/chat-feed.hpp
+  src/chat-merger-dock.cpp
+  src/chat-merger-dock.hpp
+  src/twitch-chat-service.cpp
+  src/twitch-chat-service.hpp
+  src/twitch-event-service.cpp
+  src/twitch-event-service.hpp
+  src/tiktok-chat-service.cpp
+  src/tiktok-chat-service.hpp
 )
 
 set_target_properties_plugin(${CMAKE_PROJECT_NAME} PROPERTIES OUTPUT_NAME ${_name})

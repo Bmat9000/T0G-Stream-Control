@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - feature/t0g-obs-stream-control
+      - feature/t0g-chat-merger
   pull_request:
     paths:
       - "obs-plugin/**"
@@ -39,6 +40,19 @@ jobs:
           Copy-Item -Recurse t0g-source/obs-plugin/src src
           Copy-Item -Force t0g-source/obs-plugin/ci/CMakeLists.txt CMakeLists.txt
           Copy-Item -Force t0g-source/obs-plugin/ci/buildspec.json buildspec.json
+
+      - name: Build local TikTok chat connector
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          git clone --depth 1 https://github.com/PirateTok/live-c.git piratetok-live-c
+          Push-Location piratetok-live-c
+          cargo build --release
+          Pop-Location
+          $dll = Get-ChildItem -Path "piratetok-live-c/target/release" -Filter "piratetok.dll" | Select-Object -First 1
+          if (-not $dll) { throw "piratetok.dll was not produced." }
+          New-Item -ItemType Directory -Force -Path "local-chat-runtime" | Out-Null
+          Copy-Item -Force $dll.FullName "local-chat-runtime/piratetok.dll"
 
       - name: Build plugin
         uses: ./.github/actions/build-plugin
@@ -178,6 +192,12 @@ jobs:
             Write-Host "Bundling Qt TLS backend: $($tls.FullName)"
             Copy-Item -Force $tls.FullName "$payload/bin/64bit/tls/$($tls.Name)"
           }
+
+          $localTikTok = "local-chat-runtime/piratetok.dll"
+          if (-not (Test-Path $localTikTok)) { throw "Local TikTok chat runtime is missing." }
+          New-Item -ItemType Directory -Force -Path "$payload/bin/64bit" | Out-Null
+          Copy-Item -Force $localTikTok "$payload/bin/64bit/piratetok.dll"
+
 
           $pluginData = Get-ChildItem -Path release -Recurse -Directory |
             Where-Object { $_.Name -eq "data" -and $_.Parent.Name -eq "t0g-stream-control" } |

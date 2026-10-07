@@ -128,6 +128,7 @@ T0GSettingsDialog::T0GSettingsDialog(const T0GSettings &cfg, QWidget *parent) : 
     accountsLayout->addWidget(tt);
     layout->addWidget(accounts);
 
+
     auto *credentials = new QGroupBox("Current Stream Credentials / Fallback", content);
     auto *credentialsForm = new QFormLayout(credentials);
 
@@ -311,6 +312,7 @@ void T0GSettingsDialog::saveSecrets()
     if (tiktokMode->currentIndex() == 1 && !tiktokKey->text().isEmpty() &&
         !CredentialStore::write("TikTokManualKey", tiktokKey->text(), &error))
         QMessageBox::warning(this, "TikTok stream key", error);
+
 }
 
 void T0GSettingsDialog::clearTwitchKey()
