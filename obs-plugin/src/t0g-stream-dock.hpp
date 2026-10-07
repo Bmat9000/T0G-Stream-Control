@@ -29,6 +29,7 @@ signals:
     void twitchChatIdentityChanged(QString login);
     void twitchEventIdentityChanged(QString accountId);
     void tiktokChatIdentityChanged(QString username);
+    void tiktokLiveCreated();
 
 private:
     void updateReadyState();
