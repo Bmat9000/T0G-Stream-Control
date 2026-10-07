@@ -1,5 +1,13 @@
 #include "chat-merger-dock.hpp"
 #include <QDesktopServices>
+#include <QCheckBox>
+#include <QColorDialog>
+#include <QDialog>
+#include <QDialogButtonBox>
+#include <QFormLayout>
+#include <QGroupBox>
+#include <QLineEdit>
+#include <QSettings>
 #include <QFrame>
 #include <QHBoxLayout>
 #include <QLabel>
@@ -39,9 +47,13 @@ ChatMergerDock::ChatMergerDock(QWidget *parent) : QDockWidget("T0G Chat Merger",
     auto *titleRow=new QHBoxLayout;
     auto *title=new QLabel("T0G CHAT MERGER",root);
     title->setStyleSheet("font-size:17px;font-weight:800;");
+    auto *gear=new QPushButton(QString::fromUtf8("⚙"),root);
+    gear->setFixedSize(28,28); gear->setToolTip("Chat Merger settings");
+    gear->setStyleSheet("font-size:16px;font-weight:700;padding:0;");
+    connect(gear,&QPushButton::clicked,this,&ChatMergerDock::openChatSettings);
     auto *readOnly=new QLabel("READ ONLY",root);
     readOnly->setStyleSheet("font-size:9px;font-weight:800;color:#aeb7c7;background:#292e3b;border-radius:5px;padding:3px 6px;");
-    titleRow->addWidget(title); titleRow->addStretch(); titleRow->addWidget(readOnly);
+    titleRow->addWidget(title); titleRow->addStretch(); titleRow->addWidget(readOnly); titleRow->addWidget(gear);
     rootLayout->addLayout(titleRow);
 
     status=new QLabel(root); status->setStyleSheet("font-size:10px;color:#b8c0ce;");
@@ -79,6 +91,10 @@ void ChatMergerDock::setTikTokState(bool v,QString d){tiktokConnected=v;tiktokDe
 void ChatMergerDock::setTwitchViewers(int v){twitchViewers=v;refreshViewers();}
 void ChatMergerDock::refreshViewers()
 {
+    QSettings s("T0G","T0G Chat Merger");
+    twitchViewerValue->parentWidget()->setVisible(s.value("viewers/twitch",true).toBool());
+    tiktokViewerValue->parentWidget()->setVisible(s.value("viewers/tiktok",true).toBool());
+    totalViewerValue->parentWidget()->setVisible(s.value("viewers/total",true).toBool());
     twitchViewerValue->setText(twitchViewers>=0?QString::number(twitchViewers):"--");
     tiktokViewerValue->setText(tiktokViewers>=0?QString::number(tiktokViewers):"--");
     const int known=(twitchViewers>=0?twitchViewers:0)+(tiktokViewers>=0?tiktokViewers:0);
@@ -87,6 +103,7 @@ void ChatMergerDock::refreshViewers()
 
 void ChatMergerDock::addMessage(ChatMessage m)
 {
+    if(!eventVisible(m)) return;
     if(m.type==ChatEventType::ViewerUpdate){if(m.viewerCount>=0){tiktokViewers=m.viewerCount;refreshViewers();}return;}
     if(m.type==ChatEventType::Like){
         const QString key=m.userId.isEmpty()?m.username:m.userId;if(key.isEmpty())return;
@@ -101,7 +118,8 @@ void ChatMergerDock::addEventCard(const ChatMessage &m)
 {
     if(auto *empty=feed->findChild<QLabel*>("emptyChatLabel"))empty->deleteLater();
     auto *card=new QFrame(feed); card->setObjectName("chatCard");
-    card->setStyleSheet("#chatCard{background:#20242e;border:1px solid #2d3340;border-radius:7px;} #chatCard:hover{background:#242936;border:1px solid #3b4353;}");
+    const QString bg=cardColor(m);
+    card->setStyleSheet(QString("#chatCard{background:%1;border:1px solid #3a4050;border-radius:7px;}").arg(bg));
     auto *v=new QVBoxLayout(card);v->setContentsMargins(9,7,9,7);v->setSpacing(3);
     auto *top=new QHBoxLayout;
     QString shown=m.displayName.isEmpty()?m.username:m.displayName;if(shown.isEmpty())shown="LIVE";
@@ -123,4 +141,92 @@ void ChatMergerDock::addEventCard(const ChatMessage &m)
     QTimer::singleShot(0,this,[this]{scrollArea->verticalScrollBar()->setValue(scrollArea->verticalScrollBar()->maximum());});
     // Chat is a live activity window, not permanent history. Expire each card after 60 seconds.
     QTimer::singleShot(60000,card,[card]{card->deleteLater();});
+}
+
+
+QString ChatMergerDock::settingKey(const ChatMessage &m) const
+{
+    const QString p=m.platform==ChatPlatform::Twitch?"twitch":"tiktok";
+    if(!m.eventKey.isEmpty()) return p+"/"+m.eventKey;
+    switch(m.type){
+    case ChatEventType::Message:return p+"/chat";
+    case ChatEventType::Gift:return p+"/gift";
+    case ChatEventType::Like:return p+"/likes";
+    case ChatEventType::Follow:return p+"/follow";
+    case ChatEventType::Share:return p+"/share";
+    case ChatEventType::Join:return p+"/join";
+    case ChatEventType::Subscription:return p+"/sub";
+    case ChatEventType::ViewerUpdate:return p+"/viewers";
+    }
+    return p+"/chat";
+}
+bool ChatMergerDock::eventVisible(const ChatMessage &m) const
+{
+    QSettings s("T0G","T0G Chat Merger");
+    return s.value("show/"+settingKey(m),true).toBool();
+}
+QString ChatMergerDock::cardColor(const ChatMessage &m) const
+{
+    QSettings s("T0G","T0G Chat Merger");
+    return s.value("color/"+settingKey(m),"#20242e").toString();
+}
+
+void ChatMergerDock::openChatSettings()
+{
+    QDialog d(this); d.setWindowTitle("T0G Chat Merger Settings"); d.resize(600,700);
+    auto *outer=new QVBoxLayout(&d);
+    auto *scroll=new QScrollArea(&d); scroll->setWidgetResizable(true); scroll->setFrameShape(QFrame::NoFrame);
+    auto *content=new QWidget(scroll); auto *layout=new QVBoxLayout(content);
+    QSettings s("T0G","T0G Chat Merger");
+
+    auto *test=new QGroupBox("TikTok Testing",content); auto *testForm=new QFormLayout(test);
+    auto *testUser=new QLineEdit(test); testUser->setPlaceholderText("@username");
+    testUser->setText(s.value("tiktok/testUsername").toString());
+    auto *note=new QLabel("Optional read-only test target. Enter a currently-LIVE TikTok username. Leave blank to use your connected TikTok account.",test);
+    note->setWordWrap(true); testForm->addRow("TikTok @username",testUser); testForm->addRow("",note); layout->addWidget(test);
+
+    struct Row{QString group,key,label;};
+    const QList<Row> rows={
+      {"Twitch","twitch/chat","Chat messages"},{"Twitch","twitch/new_sub","New subs"},{"Twitch","twitch/resub","Resubs"},
+      {"Twitch","twitch/gifted_sub","Gifted subs"},{"Twitch","twitch/bits","Bits / Cheers"},{"Twitch","twitch/raid","Raids"},
+      {"TikTok","tiktok/chat","Chat messages"},{"TikTok","tiktok/gift","Gifts"},{"TikTok","tiktok/likes","Likes"},
+      {"TikTok","tiktok/follow","Follows"},{"TikTok","tiktok/share","Shares"},{"TikTok","tiktok/join","Joins"},{"TikTok","tiktok/sub","Subscriptions"}};
+    QHash<QString,QGroupBox*> groups; QHash<QString,QVBoxLayout*> groupLayouts;
+    for(const QString &g:{"Twitch","TikTok"}){auto *box=new QGroupBox(g,content);auto *vl=new QVBoxLayout(box);groups[g]=box;groupLayouts[g]=vl;layout->addWidget(box);}
+    QList<QPair<QString,QCheckBox*>> checks;
+    for(const Row &row:rows){
+        auto *line=new QWidget(groups[row.group]);auto *hl=new QHBoxLayout(line);hl->setContentsMargins(0,0,0,0);
+        auto *show=new QCheckBox(row.label,line);show->setChecked(s.value("show/"+row.key,true).toBool());
+        auto *color=new QPushButton("Card Color",line);
+        QString chosen=s.value("color/"+row.key,"#20242e").toString();
+        color->setStyleSheet("background:"+chosen+";");
+        connect(color,&QPushButton::clicked,&d,[color,&d,row,&s]{
+            QColor initial(s.value("color/"+row.key,"#20242e").toString());
+            QColor picked=QColorDialog::getColor(initial,&d,"Choose card color");
+            if(picked.isValid()){s.setValue("color/"+row.key,picked.name());color->setStyleSheet("background:"+picked.name()+";");}
+        });
+        hl->addWidget(show);hl->addStretch();hl->addWidget(color);groupLayouts[row.group]->addWidget(line);
+        checks.append({row.key,show});
+    }
+
+    auto *viewers=new QGroupBox("Viewer Dashboard",content);auto *vv=new QVBoxLayout(viewers);
+    auto *showTw=new QCheckBox("Show Twitch viewers",viewers);showTw->setChecked(s.value("viewers/twitch",true).toBool());
+    auto *showTt=new QCheckBox("Show TikTok viewers",viewers);showTt->setChecked(s.value("viewers/tiktok",true).toBool());
+    auto *showTotal=new QCheckBox("Show Total viewers",viewers);showTotal->setChecked(s.value("viewers/total",true).toBool());
+    vv->addWidget(showTw);vv->addWidget(showTt);vv->addWidget(showTotal);layout->addWidget(viewers);
+    layout->addStretch();scroll->setWidget(content);outer->addWidget(scroll);
+
+    auto *buttons=new QDialogButtonBox(QDialogButtonBox::Save|QDialogButtonBox::Cancel|QDialogButtonBox::Reset,&d);
+    connect(buttons->button(QDialogButtonBox::Reset),&QPushButton::clicked,&d,[&]{
+        s.clear(); testUser->clear();
+        for(auto &p:checks)p.second->setChecked(true);
+        showTw->setChecked(true);showTt->setChecked(true);showTotal->setChecked(true);
+    });
+    connect(buttons,&QDialogButtonBox::accepted,&d,[&]{
+        for(auto &p:checks)s.setValue("show/"+p.first,p.second->isChecked());
+        s.setValue("viewers/twitch",showTw->isChecked());s.setValue("viewers/tiktok",showTt->isChecked());s.setValue("viewers/total",showTotal->isChecked());
+        QString username=testUser->text().trimmed();if(username.startsWith('@'))username.remove(0,1);
+        s.setValue("tiktok/testUsername",username);s.sync();emit tikTokTestUsernameChanged(username);refreshViewers();d.accept();
+    });
+    connect(buttons,&QDialogButtonBox::rejected,&d,&QDialog::reject);outer->addWidget(buttons);d.exec();
 }
