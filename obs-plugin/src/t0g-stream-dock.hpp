@@ -24,6 +24,7 @@ public:
     void triggerEndLive() { stopSelectedPlatforms(); }
     QString twitchChatLogin() const { return twitch.loginName(); }
     QString twitchAccountId() const { return twitch.accountId(); }
+    QString tiktokChatUsername() const { return currentTikTokUsername; }
 
 signals:
     void twitchChatIdentityChanged(QString login);
@@ -84,6 +85,7 @@ private:
     AitumVertical aitumVertical;
     bool usingAitumVertical = false;
     QString activeTikTokStreamId;
+    QString currentTikTokUsername;
     QString selectedTikTokCategoryId;
     bool busy = false;
     T0GSettings settings;
