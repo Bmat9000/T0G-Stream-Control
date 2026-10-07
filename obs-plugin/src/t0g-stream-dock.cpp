@@ -614,6 +614,7 @@ void T0GStreamDock::startTikTok()
                     return;
                 }
                 activeTikTokStreamId = result.streamId;
+                emit tiktokLiveCreated();
                 SessionState::setTikTokCredentials(result.server, result.key, result.streamId);
                 QString outputError;
                 usingAitumVertical = settings.tiktokOutputTestMode == 0 && settings.preferVertical && aitumVertical.available();
@@ -662,6 +663,7 @@ void T0GStreamDock::startTikTok()
                     }
 
                     activeTikTokStreamId = result.streamId;
+                    emit tiktokLiveCreated();
 
                     // Session-only fallback credentials. Never logged.
                     SessionState::setTikTokCredentials(result.server, result.key, result.streamId);
