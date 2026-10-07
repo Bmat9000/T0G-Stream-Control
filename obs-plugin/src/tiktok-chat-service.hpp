@@ -3,6 +3,8 @@
 #include <QString>
 #include "chat-message.hpp"
 
+class QTimer;
+
 class TikTokChatService final : public QObject {
     Q_OBJECT
 public:
@@ -25,6 +27,8 @@ private:
     void handleEvent(int type, const QByteArray &json);
     bool loadLocalConnector();
     void unloadLocalConnector();
+    void closeClient();
+    void scheduleRetry();
     static QString normalizedUsername(QString value);
 
     void *libraryHandle{};
@@ -32,6 +36,8 @@ private:
     Client *client{};
     QString uniqueId;
     bool liveConnected=false;
+    bool desiredRunning=false;
+    QTimer *retryTimer{};
 
     Runtime *(*fnInit)(){};
     void (*fnShutdown)(Runtime *){};
