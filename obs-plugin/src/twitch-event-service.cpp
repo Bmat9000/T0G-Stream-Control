@@ -37,6 +37,10 @@ ChatMessage baseTwitchEvent(const QJsonObject &event)
 TwitchEventService::TwitchEventService(QObject *parent):QObject(parent)
 {
     net=new QNetworkAccessManager(this);
+    viewerTimer=new QTimer(this);
+    viewerTimer->setInterval(30000);
+    connect(viewerTimer,&QTimer::timeout,this,&TwitchEventService::refreshViewerCount);
+
     watchdog=new QTimer(this);
     watchdog->setSingleShot(true);
     watchdog->setInterval(45000);
@@ -61,6 +65,8 @@ void TwitchEventService::start(const QString &id)
     }
     broadcasterId=id.trimmed();
     stopping=false;
+    viewerTimer->start();
+    refreshViewerCount();
     openSocket();
 }
 
@@ -68,6 +74,8 @@ void TwitchEventService::stop()
 {
     stopping=true;
     watchdog->stop();
+    viewerTimer->stop();
+    emit viewerCountChanged(0);
     closeSocket();
 }
 
@@ -288,4 +296,22 @@ void TwitchEventService::handleNotification(const QString &type,const QJsonObjec
         m.message=QString::fromUtf8("⚔ Raid with %1 viewer%2").arg(viewers).arg(viewers==1?"":"s");
     } else return;
     emit eventReceived(m);
+}
+
+
+void TwitchEventService::refreshViewerCount()
+{
+    if (broadcasterId.isEmpty() || accessToken().isEmpty()) return;
+    QNetworkRequest req(QUrl("https://api.twitch.tv/helix/streams?user_id="+QUrl::toPercentEncoding(broadcasterId)));
+    req.setRawHeader("Client-Id",kClientId);
+    req.setRawHeader("Authorization",("Bearer "+accessToken()).toUtf8());
+    auto *reply=net->get(req);
+    connect(reply,&QNetworkReply::finished,this,[this,reply]{
+        const int status=reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+        const QJsonDocument doc=QJsonDocument::fromJson(reply->readAll());
+        reply->deleteLater();
+        if(status!=200 || !doc.isObject()) return;
+        const QJsonArray data=doc.object().value("data").toArray();
+        emit viewerCountChanged(data.isEmpty()?0:data.first().toObject().value("viewer_count").toInt(0));
+    });
 }
