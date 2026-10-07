@@ -46,6 +46,7 @@ private:
     void startSelectedPlatforms();
     void stopSelectedPlatforms();
     void startTikTok();
+    bool startTwitchAfterTikTok();
     bool startManualTwitch();
     bool startManualTikTok();
     void setBusy(bool busy);
