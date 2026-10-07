@@ -265,6 +265,7 @@ void T0GStreamDock::refreshTikTokAccount()
         }
         tiktokUsername->setText(info.username.isEmpty() ? "Unknown" : info.username);
         if (!info.username.isEmpty())
+            currentTikTokUsername=info.username;
             emit tiktokChatIdentityChanged(info.username);
         tiktokApproval->setText(info.status.isEmpty() ? "Unknown" : info.status);
         tiktokCanLive->setText(info.canGoLive ? "True" : "False");
