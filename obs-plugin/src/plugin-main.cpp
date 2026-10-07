@@ -75,6 +75,7 @@ MODULE_EXPORT bool obs_module_load(void)
                          [=](const QString &login) { g_twitchChat->start(login); });
         g_twitchEvents = new TwitchEventService(mainWindow);
         QObject::connect(g_twitchEvents, &TwitchEventService::eventReceived, g_chatFeed, &ChatFeed::publish);
+        QObject::connect(g_twitchEvents, &TwitchEventService::viewerCountChanged, g_chatDock, &ChatMergerDock::setTwitchViewers);
         QObject::connect(g_dock, &T0GStreamDock::twitchEventIdentityChanged, g_twitchEvents,
                          [=](const QString &id) { g_twitchEvents->start(id); });
         g_tiktokChat = new TikTokChatService(mainWindow);
