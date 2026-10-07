@@ -412,8 +412,6 @@ void T0GStreamDock::openSettings()
 
     settings = dialog.settings();
     settings.save();
-    const QString chatTarget=tiktokChatUsername();
-    if (!chatTarget.isEmpty()) emit tiktokChatIdentityChanged(chatTarget);
     twitch.setClientId(settings.twitchClientId);
     twitch.restore([this](bool ok, QString name) {
         setTwitchStatus(ok ? ("Connected as " + name) : "Ready when OBS is configured");
