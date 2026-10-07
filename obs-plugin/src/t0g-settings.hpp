@@ -28,6 +28,7 @@ struct T0GSettings {
     QString twitchClientId;
     int tiktokConnectionMode = 0; // 0 = Streamlabs automatic, 1 = manual RTMP
     QString tiktokManualServer;
+    QString tiktokChatTestUsername; // optional read-only Chat Merger target for testing
 
     static T0GSettings load();
     void save() const;
@@ -71,6 +72,7 @@ private:
     QComboBox *tiktokMode{};
     QLineEdit *tiktokServer{};
     QLineEdit *tiktokKey{};
+    QLineEdit *tiktokChatTestUsername{};
     QPushButton *clearTikTok{};
 
 
