@@ -44,7 +44,6 @@ T0GSettings T0GSettings::load()
     out.twitchClientId = QString::fromUtf8(kT0GTwitchClientId);
     out.tiktokConnectionMode = s.value("accounts/tiktokMode", 0).toInt();
     out.tiktokManualServer = s.value("accounts/tiktokServer").toString();
-    out.tiktokChatTestUsername = s.value("chat/tiktokTestUsername").toString();
     return out;
 }
 
@@ -68,7 +67,6 @@ void T0GSettings::save() const
     s.remove("accounts/twitchClientId");
     s.setValue("accounts/tiktokMode", tiktokConnectionMode);
     s.setValue("accounts/tiktokServer", tiktokManualServer);
-    s.setValue("chat/tiktokTestUsername", tiktokChatTestUsername);
     s.sync();
 }
 
@@ -123,16 +121,10 @@ T0GSettingsDialog::T0GSettingsDialog(const T0GSettings &cfg, QWidget *parent) : 
     tiktokKey->setEchoMode(QLineEdit::Password);
     tiktokKey->setPlaceholderText("Stored securely in Windows Credential Manager");
     clearTikTok = new QPushButton("Clear saved key", tt);
-    tiktokChatTestUsername = new QLineEdit(tt);
-    tiktokChatTestUsername->setPlaceholderText("@username — optional, must currently be LIVE");
     ttForm->addRow("Mode", tiktokMode);
     ttForm->addRow("RTMP server", tiktokServer);
     ttForm->addRow("Stream key", tiktokKey);
     ttForm->addRow("", clearTikTok);
-    ttForm->addRow("Chat test channel", tiktokChatTestUsername);
-    auto *chatTestNote = new QLabel("Optional testing override for the read-only Chat Merger. Enter any currently-LIVE TikTok username so you can test chat/events without starting your own LIVE. Leave blank to use your connected TikTok account.", tt);
-    chatTestNote->setWordWrap(true);
-    ttForm->addRow("", chatTestNote);
     accountsLayout->addWidget(tt);
     layout->addWidget(accounts);
 
@@ -227,7 +219,6 @@ T0GSettingsDialog::T0GSettingsDialog(const T0GSettings &cfg, QWidget *parent) : 
     tiktokMode->setCurrentIndex(cfg.tiktokConnectionMode);
     tiktokServer->setText(cfg.tiktokManualServer);
     tiktokKey->setText(CredentialStore::read("TikTokManualKey"));
-    tiktokChatTestUsername->setText(cfg.tiktokChatTestUsername);
     autoLoadTikTok->setChecked(cfg.autoLoadTikTok);
     rememberStreamInfo->setChecked(cfg.rememberStreamInfo);
     confirmBeforeEnd->setChecked(cfg.confirmBeforeEnd);
@@ -353,6 +344,5 @@ T0GSettings T0GSettingsDialog::settings() const
     out.twitchClientId = QString::fromUtf8(kT0GTwitchClientId);
     out.tiktokConnectionMode = tiktokMode->currentIndex();
     out.tiktokManualServer = tiktokServer->text().trimmed();
-    out.tiktokChatTestUsername = tiktokChatTestUsername->text().trimmed();
     return out;
 }
