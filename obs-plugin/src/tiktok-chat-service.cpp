@@ -6,6 +6,7 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QMetaObject>
+#include <QTimer>
 #include <QUrl>
 
 #ifdef Q_OS_WIN
@@ -38,7 +39,18 @@ QString firstString(const QJsonObject &o, std::initializer_list<const char *> ke
 }
 }
 
-TikTokChatService::TikTokChatService(QObject *parent) : QObject(parent) {}
+TikTokChatService::TikTokChatService(QObject *parent) : QObject(parent)
+{
+    retryTimer=new QTimer(this);
+    retryTimer->setSingleShot(true);
+    retryTimer->setInterval(5000);
+    connect(retryTimer,&QTimer::timeout,this,[this] {
+        if (!desiredRunning || uniqueId.isEmpty() || liveConnected) return;
+        T0GLog::write("Chat Merger: retrying TikTok LIVE chat for @"+uniqueId);
+        const QString username=uniqueId;
+        start(username);
+    });
+}
 
 TikTokChatService::~TikTokChatService()
 {
@@ -113,7 +125,9 @@ void TikTokChatService::start(const QString &username)
     }
     if (liveConnected && uniqueId.compare(normalized,Qt::CaseInsensitive)==0) return;
 
-    stop();
+    desiredRunning=true;
+    if (retryTimer) retryTimer->stop();
+    closeClient();
     uniqueId=normalized;
 
     if (!loadLocalConnector()) {
@@ -137,10 +151,11 @@ void TikTokChatService::start(const QString &username)
         fnClientFree(client);
         client=nullptr;
         emit connectionChanged(false,result==3 ? "Waiting for TikTok LIVE" : "TikTok connection failed");
+        scheduleRetry();
     }
 }
 
-void TikTokChatService::stop()
+void TikTokChatService::closeClient()
 {
     liveConnected=false;
     if (client) {
@@ -148,6 +163,19 @@ void TikTokChatService::stop()
         if (fnClientFree) fnClientFree(client);
         client=nullptr;
     }
+}
+
+void TikTokChatService::scheduleRetry()
+{
+    if (desiredRunning && retryTimer && !retryTimer->isActive())
+        retryTimer->start();
+}
+
+void TikTokChatService::stop()
+{
+    desiredRunning=false;
+    if (retryTimer) retryTimer->stop();
+    closeClient();
 }
 
 void TikTokChatService::eventCallback(int type,const char *json,size_t len,void *userData)
@@ -173,7 +201,8 @@ void TikTokChatService::handleEvent(int type,const QByteArray &json)
     }
     if (type==kDisconnected || type==kLiveEnded) {
         liveConnected=false;
-        emit connectionChanged(false,type==kLiveEnded ? "LIVE ended" : "Disconnected");
+        emit connectionChanged(false,type==kLiveEnded ? "Waiting for TikTok LIVE" : "Reconnecting...");
+        scheduleRetry();
         return;
     }
     if (type!=kChat && type!=kGift && type!=kLike && type!=kFollow && type!=kShare &&
