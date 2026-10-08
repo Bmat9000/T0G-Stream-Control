@@ -2,7 +2,7 @@
 
 **T0G Stream Control** is a native Windows plugin for OBS Studio that brings TikTok LIVE and Twitch stream controls into OBS. The project is designed around a modular architecture so streaming, platform integrations, chat, vertical output, credentials, diagnostics, and future features can be developed independently without turning the plugin into one large component.
 
-> **Project status:** The core T0G Stream Control OBS plugin features are working. **Chat Merger and chat/LIVE event features are coming soon and are actively being worked on right now.** Some integrations depend on account access and third-party platform behavior that can change over time.
+> **Project status:** The core T0G Stream Control OBS plugin features are working, including the **Chat Merger and supported chat/LIVE event features**. Some integrations depend on account access and third-party platform behavior that can change over time.
 
 ## What T0G Stream Control Does
 
@@ -17,10 +17,10 @@ Current project components include:
 - TikTok RTMP/output handling.
 - Manual RTMP fallback support.
 - Aitum Vertical integration for vertical TikTok output.
-- **Coming soon / in active development:** Combined Twitch + TikTok Chat Merger dock.
-- **Coming soon / in active development:** Read-only TikTok LIVE chat/event ingestion.
-- **Coming soon / in active development:** TikTok LIVE gifts and other LIVE activity/events.
-- **Coming soon / in active development:** Twitch chat integration.
+- Combined Twitch + TikTok Chat Merger dock.
+- Twitch chat integration.
+- Read-only TikTok LIVE chat/event ingestion.
+- TikTok LIVE gifts and supported LIVE activity/events.
 - Saved plugin settings and credential storage.
 - Stream presets and session state.
 - Preflight checks before starting outputs.
@@ -33,9 +33,9 @@ Current project components include:
 
 The core **T0G Stream Control** streaming features are working, including the native OBS dock, TikTok LIVE/stream controls, Twitch integration, stream title and game/category controls, TikTok RTMP/output handling, manual RTMP fallback, Aitum Vertical integration, saved settings/credentials, presets, preflight checks, and diagnostics.
 
-### 🚧 Coming Soon — Chat Read
+### ✅ Chat Read
 
-**Chat Read is actively being worked on right now.** This will allow the Chat Merger to receive and display supported chat and LIVE activity inside OBS, including:
+**Chat Read is working.** The Chat Merger can receive and display supported chat and LIVE activity inside OBS, including:
 
 - Twitch chat messages.
 - TikTok LIVE chat messages.
@@ -56,9 +56,9 @@ The planned controls are:
 
 TikTok Chat Write is **not currently implemented** and is not being advertised as working. It will only be added if the project has a reliable way to send TikTok LIVE chat messages.
 
-## Chat Merger — Coming Soon
+## Chat Merger
 
-> **🚧 IN ACTIVE DEVELOPMENT:** Chat Merger, Twitch chat, TikTok LIVE chat, gifts, and related LIVE event features are currently being worked on and are **coming soon**. The rest of the core T0G Stream Control streaming functionality is working.
+> **✅ WORKING:** Chat Merger, Twitch chat, TikTok LIVE chat, gifts, and supported LIVE event features are working. TikTok chat/event handling remains read-only on the TikTok side.
 
 The **Chat Merger** is being built to provide one OBS dock for supported Twitch and TikTok LIVE activity.
 
@@ -223,9 +223,9 @@ The intended setup allows the normal landscape stream and the TikTok vertical st
 
 ### 10. Chat Features
 
-The streaming/control side is working now. The **Chat Merger is the part currently under active development**.
+The streaming/control side and **Chat Merger** are working now.
 
-**Chat Read — coming soon:** Twitch chat, TikTok LIVE chat, TikTok gifts/LIVE events, and the combined Twitch + TikTok feed.
+**Chat Read — working:** Twitch chat, TikTok LIVE chat, TikTok gifts/supported LIVE events, and the combined Twitch + TikTok feed.
 
 **Chat Write — planned after Chat Read:** a message box with Twitch / TikTok / Both selections. TikTok writing will only be marked as supported after a reliable implementation exists.
 
