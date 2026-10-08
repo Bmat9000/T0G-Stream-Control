@@ -60,7 +60,9 @@ TikTok Chat Write is **not currently implemented** and is not being advertised a
 
 The planned Streamlabs login flow will make setup a one-time process for most users. After **LOAD FROM WEB** successfully retrieves the Streamlabs API token, T0G Stream Control will securely save the token in Windows Credential Manager and automatically restore it when OBS starts.
 
-The goal is that users will not need to open Streamlabs or repeat **LOAD FROM WEB** every time they stream. The Streamlabs login step should only need to be repeated if the saved token expires, is revoked, the user changes accounts, or the credential is removed.
+The goal is that users will not need to open Streamlabs or repeat **LOAD FROM WEB** every time they stream. T0G will automatically test the saved token when OBS starts. If the token is still valid, the plugin will reconnect silently and continue using it. If Streamlabs invalidates or revokes the token, the account/session changes, or the saved credential is removed, T0G will show a clear **Streamlabs login expired — Load From Web again** message so the user knows exactly what to do.
+
+Streamlabs does not document a fixed expiration interval for the current token flow used by the project, so T0G will validate the saved token instead of assuming it expires after a specific number of days.
 
 ## Chat Merger
 
