@@ -151,17 +151,18 @@ void ChatMergerDock::addEventCard(const ChatMessage &m)
     body->setStyleSheet(QString("background:transparent;border:0;font-size:%1px;").arg(fontSize));
     const auto unicode=m.message.toUcs4();
     const std::u32string points(unicode.begin(),unicode.end());
+    const int pointCount=static_cast<int>(points.size());
     auto textRange=[&](int first,int count){return QString::fromUcs4(points.data()+first,count).toHtmlEscaped().replace("\n","<br>");};
     auto emotes=m.emotes; std::sort(emotes.begin(),emotes.end(),[](const ChatEmote &a,const ChatEmote &b){return a.start<b.start;});
     QString html; int cursor=0; QList<QUrl> urls;
     for(const auto &emote:emotes){
-        if(emote.start<cursor || emote.end>=points.size()) continue;
+        if(emote.start<cursor || emote.end>=pointCount) continue;
         const QUrl url("https://static-cdn.jtvnw.net/emoticons/v2/"+QString::fromUtf8(QUrl::toPercentEncoding(emote.id))+"/static/dark/1.0");
         html+=textRange(cursor,emote.start-cursor);
         html+=QString("<img src=\"%1\" width=\"%2\" height=\"%2\" alt=\"%3\">").arg(url.toString().toHtmlEscaped()).arg(fontSize+8).arg(textRange(emote.start,emote.end-emote.start+1));
         cursor=emote.end+1; if(!urls.contains(url))urls.append(url);
     }
-    html+=textRange(cursor,points.size()-cursor); body->setHtml(html);
+    html+=textRange(cursor,pointCount-cursor); body->setHtml(html);
     auto resizeBody=[body]{body->document()->setTextWidth(qMax(100,body->viewport()->width()));body->setFixedHeight(qMax(30,int(body->document()->size().height())+8));};
     connect(body->document()->documentLayout(),&QAbstractTextDocumentLayout::documentSizeChanged,body,[body](const QSizeF &size){body->setFixedHeight(qMax(30,int(size.height())+8));});
     v->addWidget(body); QTimer::singleShot(0,body,resizeBody);
