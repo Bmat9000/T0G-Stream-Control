@@ -18,6 +18,14 @@
 #include <QUrl>
 #include <QVBoxLayout>
 #include <QWidget>
+#include <QSpinBox>
+#include <QTextBrowser>
+#include <QTextDocument>
+#include <QNetworkAccessManager>
+#include <QNetworkReply>
+#include <QNetworkRequest>
+#include <QImage>
+#include <algorithm>
 
 namespace {
 QWidget *viewerTile(const QString &name,QLabel **value,QWidget *parent)
@@ -116,6 +124,9 @@ void ChatMergerDock::flushLikes(){const auto v=pendingLikes.values();pendingLike
 
 void ChatMergerDock::addEventCard(const ChatMessage &m)
 {
+    if(!eventVisible(m)) return;
+    QSettings settings("T0G","T0G Chat Merger");
+    const int fontSize=qBound(8,settings.value("display/fontSize",12).toInt(),32);
     if(auto *empty=feed->findChild<QLabel*>("emptyChatLabel"))empty->deleteLater();
     auto *card=new QFrame(feed); card->setObjectName("chatCard");
     const QString bg=cardColor(m);
@@ -127,10 +138,39 @@ void ChatMergerDock::addEventCard(const ChatMessage &m)
     name->setStyleSheet("text-align:left;font-weight:800;padding:0;border:0;background:transparent;");
     QString badge=m.platform==ChatPlatform::Twitch?"TWITCH":"TIKTOK";
     switch(m.type){case ChatEventType::Gift:badge+=" • GIFT";break;case ChatEventType::Like:badge+=" • LIKES";break;case ChatEventType::Follow:badge+=" • FOLLOW";break;case ChatEventType::Share:badge+=" • SHARE";break;case ChatEventType::Join:badge+=" • JOIN";break;case ChatEventType::Subscription:badge+=" • SUB";break;default:break;}
+    if(!m.eventKey.isEmpty()) badge=(m.platform==ChatPlatform::Twitch?"TWITCH • ":"TIKTOK • ")+QString(m.eventKey).replace('_',' ').toUpper();
+    if(!m.badges.isEmpty()) name->setText(shown+" ["+m.badges.join(", ")+"]");
     auto *tag=new QLabel(badge,card);tag->setStyleSheet("font-size:9px;font-weight:800;color:#aeb7c7;");
     top->addWidget(name);top->addStretch();top->addWidget(tag);v->addLayout(top);
-    auto *body=new QLabel(m.message,card);body->setWordWrap(true);body->setTextInteractionFlags(Qt::TextSelectableByMouse);
-    body->setStyleSheet(m.type==ChatEventType::Message?"font-size:12px;":"font-size:12px;font-weight:700;");v->addWidget(body);
+    // Escape chat text before rendering rich content. Emote positions use Unicode code points.
+    auto *body=new QTextBrowser(card); body->setFrameShape(QFrame::NoFrame);
+    body->setOpenExternalLinks(false); body->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    body->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    body->setStyleSheet(QString("background:transparent;border:0;font-size:%1px;").arg(fontSize));
+    const auto points=m.message.toUcs4();
+    auto textRange=[&](int first,int count){return QString::fromUcs4(points.constData()+first,count).toHtmlEscaped().replace("\n","<br>");};
+    auto emotes=m.emotes; std::sort(emotes.begin(),emotes.end(),[](const ChatEmote &a,const ChatEmote &b){return a.start<b.start;});
+    QString html; int cursor=0; QList<QUrl> urls;
+    for(const auto &emote:emotes){
+        if(emote.start<cursor || emote.end>=points.size()) continue;
+        const QUrl url("https://static-cdn.jtvnw.net/emoticons/v2/"+QString::fromUtf8(QUrl::toPercentEncoding(emote.id))+"/static/dark/1.0");
+        html+=textRange(cursor,emote.start-cursor);
+        html+=QString("<img src=\"%1\" width=\"%2\" height=\"%2\" alt=\"%3\">").arg(url.toString().toHtmlEscaped()).arg(fontSize+8).arg(textRange(emote.start,emote.end-emote.start+1));
+        cursor=emote.end+1; if(!urls.contains(url))urls.append(url);
+    }
+    html+=textRange(cursor,points.size()-cursor); body->setHtml(html);
+    auto resizeBody=[body]{body->document()->setTextWidth(qMax(100,body->viewport()->width()));body->setFixedHeight(qMax(30,int(body->document()->size().height())+8));};
+    connect(body->document(),&QTextDocument::documentSizeChanged,body,[body](const QSizeF &size){body->setFixedHeight(qMax(30,int(size.height())+8));});
+    v->addWidget(body); QTimer::singleShot(0,body,resizeBody);
+    auto *network=urls.isEmpty()?nullptr:new QNetworkAccessManager(body);
+    for(const auto &url:urls){
+        auto *reply=network->get(QNetworkRequest(url));
+        connect(reply,&QNetworkReply::finished,body,[body,reply,url,html,resizeBody]{
+            QImage image; if(reply->error()==QNetworkReply::NoError)image.loadFromData(reply->readAll());
+            if(!image.isNull()){body->document()->addResource(QTextDocument::ImageResource,url,image);body->setHtml(html);resizeBody();}
+            reply->deleteLater();
+        });
+    }
     const QString user=m.username;const ChatPlatform platform=m.platform;
     connect(name,&QPushButton::clicked,card,[user,platform]{if(user.isEmpty())return;const QString base=platform==ChatPlatform::Twitch?"https://www.twitch.tv/":"https://www.tiktok.com/@";QDesktopServices::openUrl(QUrl(base+QString::fromUtf8(QUrl::toPercentEncoding(user))));});
 
@@ -139,8 +179,8 @@ void ChatMergerDock::addEventCard(const ChatMessage &m)
 
     // Keep the newest event visible even during a busy LIVE.
     QTimer::singleShot(0,this,[this]{scrollArea->verticalScrollBar()->setValue(scrollArea->verticalScrollBar()->maximum());});
-    // Chat is a live activity window, not permanent history. Expire each card after 60 seconds.
-    QTimer::singleShot(60000,card,[card]{card->deleteLater();});
+    // Chat is a live activity window, not permanent history. Expire each card using the configured duration (60 seconds by default).
+    QTimer::singleShot(qBound(5,settings.value("display/duration",60).toInt(),600)*1000,card,[card]{card->deleteLater();});
 }
 
 
@@ -187,10 +227,15 @@ void ChatMergerDock::openChatSettings()
 
     struct Row{QString group,key,label;};
     const QList<Row> rows={
-      {"Twitch","twitch/chat","Chat messages"},{"Twitch","twitch/new_sub","New subs"},{"Twitch","twitch/resub","Resubs"},
+      {"Twitch","twitch/chat","Chat messages"},{"Twitch","twitch/follow","Followers"},{"Twitch","twitch/new_sub","New subs"},{"Twitch","twitch/resub","Resubs"},
       {"Twitch","twitch/gifted_sub","Gifted subs"},{"Twitch","twitch/bits","Bits / Cheers"},{"Twitch","twitch/raid","Raids"},
       {"TikTok","tiktok/chat","Chat messages"},{"TikTok","tiktok/gift","Gifts"},{"TikTok","tiktok/likes","Likes"},
       {"TikTok","tiktok/follow","Follows"},{"TikTok","tiktok/share","Shares"},{"TikTok","tiktok/join","Joins"},{"TikTok","tiktok/sub","Subscriptions"}};
+    auto *display=new QGroupBox("Display",content); auto *displayForm=new QFormLayout(display);
+    auto *fontSize=new QSpinBox(display);fontSize->setRange(8,32);fontSize->setSuffix(" px");fontSize->setValue(s.value("display/fontSize",12).toInt());
+    auto *duration=new QSpinBox(display);duration->setRange(5,600);duration->setSuffix(" seconds");duration->setValue(s.value("display/duration",60).toInt());
+    displayForm->addRow("Chat text size",fontSize);displayForm->addRow("Card duration",duration);layout->addWidget(display);
+    auto *previewNote=new QLabel("Test buttons preview events locally without going live. Save display settings before testing. Hidden events stay hidden.",content);previewNote->setWordWrap(true);layout->addWidget(previewNote);
     QHash<QString,QGroupBox*> groups; QHash<QString,QVBoxLayout*> groupLayouts;
     for(const QString &g:{"Twitch","TikTok"}){auto *box=new QGroupBox(g,content);auto *vl=new QVBoxLayout(box);groups[g]=box;groupLayouts[g]=vl;layout->addWidget(box);}
     QList<QPair<QString,QCheckBox*>> checks;
@@ -205,6 +250,18 @@ void ChatMergerDock::openChatSettings()
             QColor picked=QColorDialog::getColor(initial,&d,"Choose card color");
             if(picked.isValid()){s.setValue("color/"+row.key,picked.name());color->setStyleSheet("background:"+picked.name()+";");}
         });
+        auto *preview=new QPushButton("Test",line);
+        connect(preview,&QPushButton::clicked,&d,[this,row]{
+            ChatMessage m;m.platform=row.group=="Twitch"?ChatPlatform::Twitch:ChatPlatform::TikTok;
+            m.displayName="T0G Test";m.userId="t0g-preview";
+            const QString key=row.key.section('/',1);
+            m.type=key=="chat"?ChatEventType::Message:key=="follow"?ChatEventType::Follow:key=="likes"?ChatEventType::Like:key=="share"||key=="raid"?ChatEventType::Share:key=="join"?ChatEventType::Join:key=="gift"||key=="bits"?ChatEventType::Gift:ChatEventType::Subscription;
+            if(m.platform==ChatPlatform::Twitch && key!="chat" && key!="follow")m.eventKey=key;
+            m.message="Preview: "+row.label;m.likeCount=25;m.giftCount=3;m.giftName="Rose";
+            if(key=="chat" && m.platform==ChatPlatform::Twitch){m.message="Hello! Kappa 😀";m.badges={"moderator","subscriber"};m.emotes.append({7,11,"25"});}
+            addMessage(m);
+        });
+        hl->addWidget(preview);
         hl->addWidget(show);hl->addStretch();hl->addWidget(color);groupLayouts[row.group]->addWidget(line);
         checks.append({row.key,show});
     }
@@ -218,11 +275,12 @@ void ChatMergerDock::openChatSettings()
 
     auto *buttons=new QDialogButtonBox(QDialogButtonBox::Save|QDialogButtonBox::Cancel|QDialogButtonBox::Reset,&d);
     connect(buttons->button(QDialogButtonBox::Reset),&QPushButton::clicked,&d,[&]{
-        s.clear(); testUser->clear();
+        s.clear(); testUser->clear();fontSize->setValue(12);duration->setValue(60);
         for(auto &p:checks)p.second->setChecked(true);
         showTw->setChecked(true);showTt->setChecked(true);showTotal->setChecked(true);
     });
     connect(buttons,&QDialogButtonBox::accepted,&d,[&]{
+        s.setValue("display/fontSize",fontSize->value());s.setValue("display/duration",duration->value());
         for(auto &p:checks)s.setValue("show/"+p.first,p.second->isChecked());
         s.setValue("viewers/twitch",showTw->isChecked());s.setValue("viewers/tiktok",showTt->isChecked());s.setValue("viewers/total",showTotal->isChecked());
         QString username=testUser->text().trimmed();if(username.startsWith('@'))username.remove(0,1);

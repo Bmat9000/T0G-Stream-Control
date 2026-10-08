@@ -68,6 +68,16 @@ Streamlabs does not document a fixed expiration interval for the current token f
 
 > **✅ WORKING:** Chat Merger, Twitch chat, TikTok LIVE chat, gifts, and supported LIVE event features are working. TikTok chat/event handling remains read-only on the TikTok side.
 
+Chat settings include:
+
+- Twitch chat, followers, new subs, resubs, gifted subs, Bits/Cheers, and raids.
+- TikTok chat, gifts, likes, follows, shares, joins, and subscriptions.
+- Individual show/hide controls, card colors, and local test buttons for each event.
+- Chat text size (8–32 px) and card duration (5–600 seconds; default 60).
+- Twitch role badge labels and native Twitch emote images; Unicode emojis remain supported on both platforms.
+
+**Reconnect your Twitch account after updating** to grant the new follower permission. Tests preview the feed without going live and respect saved visibility settings. Display changes apply to new cards. TikTok custom emote/badge metadata is not currently supplied by the local connector.
+
 The **Chat Merger** is being built to provide one OBS dock for supported Twitch and TikTok LIVE activity.
 
 TikTok is currently treated as **read-only** on the chat side. The plugin can receive supported TikTok LIVE messages/events, but T0G Stream Control does not currently send chat messages back to TikTok.

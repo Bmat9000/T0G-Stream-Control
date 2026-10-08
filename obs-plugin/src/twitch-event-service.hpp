@@ -4,6 +4,7 @@
 #include <QUrl>
 #include "chat-message.hpp"
 
+class QJsonObject;
 class QNetworkAccessManager;
 class QSslSocket;
 class QTimer;
@@ -25,7 +26,7 @@ private:
     void handleSocketData();
     void handleTextMessage(const QString &text);
     void createSubscriptions(const QString &sessionId);
-    void createSubscription(const QString &type, const QJsonObject &condition);
+    void createSubscription(const QString &type, const QJsonObject &condition, const QString &version = "1");
     void handleNotification(const QString &type, const QJsonObject &event);
     void closeSocket();
     void refreshViewerCount();

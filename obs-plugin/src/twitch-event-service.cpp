@@ -237,6 +237,7 @@ void TwitchEventService::handleTextMessage(const QString &text)
 void TwitchEventService::createSubscriptions(const QString &)
 {
     QJsonObject broadcaster{{"broadcaster_user_id",broadcasterId}};
+    createSubscription("channel.follow",QJsonObject{{"broadcaster_user_id",broadcasterId},{"moderator_user_id",broadcasterId}},"2");
     createSubscription("channel.subscribe",broadcaster);
     createSubscription("channel.subscription.gift",broadcaster);
     createSubscription("channel.subscription.message",broadcaster);
@@ -244,9 +245,9 @@ void TwitchEventService::createSubscriptions(const QString &)
     createSubscription("channel.raid",QJsonObject{{"to_broadcaster_user_id",broadcasterId}});
 }
 
-void TwitchEventService::createSubscription(const QString &type,const QJsonObject &condition)
+void TwitchEventService::createSubscription(const QString &type,const QJsonObject &condition,const QString &version)
 {
-    QJsonObject body{{"type",type},{"version","1"},{"condition",condition},
+    QJsonObject body{{"type",type},{"version",version},{"condition",condition},
                      {"transport",QJsonObject{{"method","websocket"},{"session_id",sessionId}}}};
     QNetworkRequest req(QUrl("https://api.twitch.tv/helix/eventsub/subscriptions"));
     req.setRawHeader("Client-Id",kClientId);
@@ -264,7 +265,10 @@ void TwitchEventService::createSubscription(const QString &type,const QJsonObjec
 void TwitchEventService::handleNotification(const QString &type,const QJsonObject &event)
 {
     ChatMessage m=baseTwitchEvent(event);
-    if(type=="channel.subscribe") {
+    if(type=="channel.follow") {
+        m.type=ChatEventType::Follow;
+        m.message="Followed the channel";
+    } else if(type=="channel.subscribe") {
         if(event.value("is_gift").toBool()) return;
         m.type=ChatEventType::Subscription;
         m.eventKey="new_sub";

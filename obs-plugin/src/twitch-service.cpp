@@ -33,7 +33,7 @@ void TwitchService::connectDevice(Result done){
     if(client.isEmpty()){done(false,"Enter the Twitch Client ID in Settings first.");return;}
     QNetworkRequest req(QUrl("https://id.twitch.tv/oauth2/device"));
     req.setHeader(QNetworkRequest::ContentTypeHeader,"application/x-www-form-urlencoded");
-    QUrlQuery q;q.addQueryItem("client_id",client);q.addQueryItem("scopes","channel:manage:broadcast chat:read channel:read:subscriptions bits:read");
+    QUrlQuery q;q.addQueryItem("client_id",client);q.addQueryItem("scopes","channel:manage:broadcast chat:read channel:read:subscriptions bits:read moderator:read:followers");
     auto *r=net->post(req,q.query(QUrl::FullyEncoded).toUtf8());
     connect(r,&QNetworkReply::finished,this,[this,r,done]{
         const auto o=QJsonDocument::fromJson(r->readAll()).object();r->deleteLater();
@@ -48,7 +48,7 @@ void TwitchService::pollDevice(){
     if(deviceCode.isEmpty()){pollTimer->stop();return;}
     QNetworkRequest req(QUrl("https://id.twitch.tv/oauth2/token"));
     req.setHeader(QNetworkRequest::ContentTypeHeader,"application/x-www-form-urlencoded");
-    QUrlQuery q;q.addQueryItem("client_id",client);q.addQueryItem("scope","channel:manage:broadcast chat:read channel:read:subscriptions bits:read");
+    QUrlQuery q;q.addQueryItem("client_id",client);q.addQueryItem("scope","channel:manage:broadcast chat:read channel:read:subscriptions bits:read moderator:read:followers");
     q.addQueryItem("device_code",deviceCode);q.addQueryItem("grant_type","urn:ietf:params:oauth:grant-type:device_code");
     auto *r=net->post(req,q.query(QUrl::FullyEncoded).toUtf8());
     connect(r,&QNetworkReply::finished,this,[this,r]{

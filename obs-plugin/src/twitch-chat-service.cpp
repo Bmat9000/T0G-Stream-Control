@@ -188,6 +188,17 @@ void TwitchChatService::handleLine(const QString &line)
         message.displayName = username;
     message.message = rest.mid(bodyStart + 2);
 
+    for (const auto &badge : tags.value("badges").split(',', Qt::SkipEmptyParts))
+        message.badges.append(badge.section('/', 0, 0));
+    for (const auto &entry : tags.value("emotes").split('/', Qt::SkipEmptyParts)) {
+        const QString id=entry.section(':',0,0);
+        for (const auto &range : entry.section(':',1).split(',',Qt::SkipEmptyParts)) {
+            bool a=false,b=false;
+            int start=range.section('-',0,0).toInt(&a), end=range.section('-',1,1).toInt(&b);
+            if(a && b && start>=0 && end>=start && !id.isEmpty()) message.emotes.append({start,end,id});
+        }
+    }
+
     if (!message.username.isEmpty() && !message.message.isEmpty())
         emit messageReceived(message);
 }
