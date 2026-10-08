@@ -221,6 +221,15 @@ jobs:
             release/**/*.zip
           if-no-files-found: error
 
+      - name: Move rolling latest tag to this successful build
+        if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git tag -f t0g-stream-control-latest "${{ github.sha }}"
+          git push origin refs/tags/t0g-stream-control-latest --force
+
       - name: Publish latest installer release
         if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
         uses: softprops/action-gh-release@v2
