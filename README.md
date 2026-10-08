@@ -56,6 +56,12 @@ The planned controls are:
 
 TikTok Chat Write is **not currently implemented** and is not being advertised as working. It will only be added if the project has a reliable way to send TikTok LIVE chat messages.
 
+### 🔜 Coming Soon — One-Time Streamlabs Login
+
+The planned Streamlabs login flow will make setup a one-time process for most users. After **LOAD FROM WEB** successfully retrieves the Streamlabs API token, T0G Stream Control will securely save the token in Windows Credential Manager and automatically restore it when OBS starts.
+
+The goal is that users will not need to open Streamlabs or repeat **LOAD FROM WEB** every time they stream. The Streamlabs login step should only need to be repeated if the saved token expires, is revoked, the user changes accounts, or the credential is removed.
+
 ## Chat Merger
 
 > **✅ WORKING:** Chat Merger, Twitch chat, TikTok LIVE chat, gifts, and supported LIVE event features are working. TikTok chat/event handling remains read-only on the TikTok side.
