@@ -21,6 +21,8 @@
 #include <QSpinBox>
 #include <QTextBrowser>
 #include <QTextDocument>
+#include <QAbstractTextDocumentLayout>
+#include <string>
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
 #include <QNetworkRequest>
@@ -147,8 +149,9 @@ void ChatMergerDock::addEventCard(const ChatMessage &m)
     body->setOpenExternalLinks(false); body->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     body->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     body->setStyleSheet(QString("background:transparent;border:0;font-size:%1px;").arg(fontSize));
-    const auto points=m.message.toUcs4();
-    auto textRange=[&](int first,int count){return QString::fromUcs4(points.constData()+first,count).toHtmlEscaped().replace("\n","<br>");};
+    const auto unicode=m.message.toUcs4();
+    const std::u32string points(unicode.begin(),unicode.end());
+    auto textRange=[&](int first,int count){return QString::fromUcs4(points.data()+first,count).toHtmlEscaped().replace("\n","<br>");};
     auto emotes=m.emotes; std::sort(emotes.begin(),emotes.end(),[](const ChatEmote &a,const ChatEmote &b){return a.start<b.start;});
     QString html; int cursor=0; QList<QUrl> urls;
     for(const auto &emote:emotes){
@@ -160,7 +163,7 @@ void ChatMergerDock::addEventCard(const ChatMessage &m)
     }
     html+=textRange(cursor,points.size()-cursor); body->setHtml(html);
     auto resizeBody=[body]{body->document()->setTextWidth(qMax(100,body->viewport()->width()));body->setFixedHeight(qMax(30,int(body->document()->size().height())+8));};
-    connect(body->document(),&QTextDocument::documentSizeChanged,body,[body](const QSizeF &size){body->setFixedHeight(qMax(30,int(size.height())+8));});
+    connect(body->document()->documentLayout(),&QAbstractTextDocumentLayout::documentSizeChanged,body,[body](const QSizeF &size){body->setFixedHeight(qMax(30,int(size.height())+8));});
     v->addWidget(body); QTimer::singleShot(0,body,resizeBody);
     auto *network=urls.isEmpty()?nullptr:new QNetworkAccessManager(body);
     for(const auto &url:urls){
