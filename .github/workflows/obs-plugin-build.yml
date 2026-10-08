@@ -224,6 +224,7 @@ jobs:
       - name: Move rolling latest tag to this successful build
         if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
         shell: pwsh
+        working-directory: t0g-source
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
