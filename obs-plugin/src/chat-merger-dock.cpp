@@ -2,6 +2,7 @@
 #include <QDesktopServices>
 #include <QCheckBox>
 #include <QColorDialog>
+#include <QPalette>
 #include <QDialog>
 #include <QDialogButtonBox>
 #include <QFormLayout>
@@ -132,23 +133,25 @@ void ChatMergerDock::addEventCard(const ChatMessage &m)
     if(auto *empty=feed->findChild<QLabel*>("emptyChatLabel"))empty->deleteLater();
     auto *card=new QFrame(feed); card->setObjectName("chatCard");
     const QString bg=cardColor(m);
+    const QColor textColor(settings.value("textColor/"+settingKey(m),feed->palette().color(QPalette::Text).name()).toString());
+    const QString foreground=textColor.isValid()?textColor.name():feed->palette().color(QPalette::Text).name();
     card->setStyleSheet(QString("#chatCard{background:%1;border:1px solid #3a4050;border-radius:7px;}").arg(bg));
     auto *v=new QVBoxLayout(card);v->setContentsMargins(9,7,9,7);v->setSpacing(3);
     auto *top=new QHBoxLayout;
     QString shown=m.displayName.isEmpty()?m.username:m.displayName;if(shown.isEmpty())shown="LIVE";
     auto *name=new QPushButton(shown,card);name->setFlat(true);name->setCursor(m.username.isEmpty()?Qt::ArrowCursor:Qt::PointingHandCursor);
-    name->setStyleSheet("text-align:left;font-weight:800;padding:0;border:0;background:transparent;");
+    name->setStyleSheet(QString("text-align:left;font-weight:800;padding:0;border:0;background:transparent;color:%1;").arg(foreground));
     QString badge=m.platform==ChatPlatform::Twitch?"TWITCH":"TIKTOK";
     switch(m.type){case ChatEventType::Gift:badge+=" • GIFT";break;case ChatEventType::Like:badge+=" • LIKES";break;case ChatEventType::Follow:badge+=" • FOLLOW";break;case ChatEventType::Share:badge+=" • SHARE";break;case ChatEventType::Join:badge+=" • JOIN";break;case ChatEventType::Subscription:badge+=" • SUB";break;default:break;}
     if(!m.eventKey.isEmpty()) badge=(m.platform==ChatPlatform::Twitch?"TWITCH • ":"TIKTOK • ")+QString(m.eventKey).replace('_',' ').toUpper();
     if(!m.badges.isEmpty()) name->setText(shown+" ["+m.badges.join(", ")+"]");
-    auto *tag=new QLabel(badge,card);tag->setStyleSheet("font-size:9px;font-weight:800;color:#aeb7c7;");
+    auto *tag=new QLabel(badge,card);tag->setStyleSheet(QString("font-size:9px;font-weight:800;color:%1;").arg(foreground));
     top->addWidget(name);top->addStretch();top->addWidget(tag);v->addLayout(top);
     // Escape chat text before rendering rich content. Emote positions use Unicode code points.
     auto *body=new QTextBrowser(card); body->setFrameShape(QFrame::NoFrame);
     body->setOpenExternalLinks(false); body->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     body->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-    body->setStyleSheet(QString("background:transparent;border:0;font-size:%1px;").arg(fontSize));
+    body->setStyleSheet(QString("background:transparent;border:0;font-size:%1px;color:%2;").arg(fontSize).arg(foreground));
     const auto unicode=m.message.toUcs4();
     const std::u32string points(unicode.begin(),unicode.end());
     const int pointCount=static_cast<int>(points.size());
@@ -254,6 +257,15 @@ void ChatMergerDock::openChatSettings()
             QColor picked=QColorDialog::getColor(initial,&d,"Choose card color");
             if(picked.isValid()){s.setValue("color/"+row.key,picked.name());color->setStyleSheet("background:"+picked.name()+";");}
         });
+        auto *textColor=new QPushButton("Text Color",line);
+        const QString defaultText=feed->palette().color(QPalette::Text).name();
+        const QString chosenText=s.value("textColor/"+row.key,defaultText).toString();
+        textColor->setStyleSheet("color:"+chosenText+";");
+        connect(textColor,&QPushButton::clicked,&d,[textColor,&d,row,&s,defaultText]{
+            QColor initial(s.value("textColor/"+row.key,defaultText).toString());
+            QColor picked=QColorDialog::getColor(initial,&d,"Choose text color");
+            if(picked.isValid()){s.setValue("textColor/"+row.key,picked.name());textColor->setStyleSheet("color:"+picked.name()+";");}
+        });
         auto *preview=new QPushButton("Test",line);
         connect(preview,&QPushButton::clicked,&d,[this,row]{
             ChatMessage m;m.platform=row.group=="Twitch"?ChatPlatform::Twitch:ChatPlatform::TikTok;
@@ -266,7 +278,7 @@ void ChatMergerDock::openChatSettings()
             addMessage(m);
         });
         hl->addWidget(preview);
-        hl->addWidget(show);hl->addStretch();hl->addWidget(color);groupLayouts[row.group]->addWidget(line);
+        hl->addWidget(show);hl->addStretch();hl->addWidget(color);hl->addWidget(textColor);groupLayouts[row.group]->addWidget(line);
         checks.append({row.key,show});
     }
 
