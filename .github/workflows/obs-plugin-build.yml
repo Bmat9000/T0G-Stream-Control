@@ -15,6 +15,10 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: t0g-obs-plugin-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   windows:
     name: Windows OBS Plugin
@@ -221,6 +225,29 @@ jobs:
             release/**/*.zip
           if-no-files-found: error
 
+      - name: Prepare official release notes
+        if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+        id: release-notes
+        shell: pwsh
+        env:
+          BUILD_NUMBER: ${{ github.run_number }}
+          BUILD_ATTEMPT: ${{ github.run_attempt }}
+          SOURCE_SHA: ${{ github.sha }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          $ErrorActionPreference = "Stop"
+          $notes = Get-Content -Raw -Encoding utf8 "t0g-source/RELEASE_NOTES.md"
+          if ([string]::IsNullOrWhiteSpace($notes)) { throw "RELEASE_NOTES.md must contain official notes." }
+          foreach ($section in @("Added", "Improved", "Fixed")) {
+            if ($notes -notmatch "(?m)^## $section\s*$") { throw "Missing release notes section: $section" }
+          }
+          if (-not (Test-Path "release/T0G-Stream-Control-Setup.exe")) { throw "Installer is missing." }
+          $date = (Get-Date).ToUniversalTime().ToString("yyyy-MM-dd HH:mm 'UTC'")
+          $build = "$env:BUILD_NUMBER.$env:BUILD_ATTEMPT"
+          $header = "**Build:** $build`n**Date:** $date`n**Commit:** [$env:SOURCE_SHA](https://github.com/$env:REPOSITORY/commit/$env:SOURCE_SHA)`n`n"
+          [IO.File]::WriteAllText("release/RELEASE_NOTES.md", $header + $notes, [Text.UTF8Encoding]::new($false))
+          "build=$build" >> $env:GITHUB_OUTPUT
+
       - name: Move rolling latest tag to this successful build
         if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
         shell: pwsh
@@ -236,13 +263,12 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: t0g-stream-control-latest
-          name: T0G Stream Control - Latest
+          name: T0G Stream Control - Build ${{ steps.release-notes.outputs.build }}
           prerelease: false
           make_latest: true
           files: release/T0G-Stream-Control-Setup.exe
-          body: |
-            Automatic latest Windows build of T0G Stream Control.
-
-            Download **T0G-Stream-Control-Setup.exe**, close OBS, and run the installer.
+          body_path: release/RELEASE_NOTES.md
+          target_commitish: ${{ github.sha }}
+          fail_on_unmatched_files: true
         env:
           GITHUB_TOKEN: ${{ github.token }}

@@ -328,3 +328,9 @@ Any original upstream licensing and attribution requirements must continue to be
 T0G Stream Control is under active development. Features may change as the plugin is tested against OBS updates and changes made by TikTok, Twitch, Streamlabs, or Aitum.
 
 When reporting a problem, include the relevant OBS log/error information but remove stream keys, tokens, cookies, and other private credentials before sharing it.
+
+## Shipping Release Notes
+
+Update [RELEASE_NOTES.md](RELEASE_NOTES.md) whenever we ship changes, in the same commit as the code being shipped. Replace the current update notes with user-friendly descriptions under **Added**, **Improved**, and **Fixed**. Inspect the actual changes and include only completed changes included in that installer. Do not include roadmap items or unverified fixes; use “None” for a section with no applicable changes.
+
+The Windows OBS plugin workflow checks out the exact triggering commit for both source and notes. After building and checking the installer, it adds the Actions build number/attempt, UTC publication date, and commit link to those notes and publishes them as the rolling GitHub release description. Main builds are serialized to avoid overlapping publication. The T0G Labs Discord bot reads this release description automatically; no separate Discord notes are required.
