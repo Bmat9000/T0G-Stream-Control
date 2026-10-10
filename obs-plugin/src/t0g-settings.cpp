@@ -1,4 +1,7 @@
 #include "t0g-settings.hpp"
+#include "replay-controller.hpp"
+#include <QKeySequenceEdit>
+#include <QTimer>
 #include "credential-store.hpp"
 #include "twitch-service.hpp"
 
@@ -27,6 +30,9 @@ T0GSettings T0GSettings::load()
 {
     QSettings s = store();
     T0GSettings out;
+    out.autoReplay = s.value("replay/auto", true).toBool();
+    out.clipDuration = s.value("replay/duration", 60).toInt();
+    if (!QList<int>{15,30,60,120,300}.contains(out.clipDuration)) out.clipDuration = 60;
     out.autoLoadTikTok = s.value("tiktok/autoLoad", true).toBool();
     out.rememberStreamInfo = s.value("stream/rememberInfo", true).toBool();
     out.confirmBeforeEnd = s.value("stream/confirmEnd", true).toBool();
@@ -50,6 +56,8 @@ T0GSettings T0GSettings::load()
 void T0GSettings::save() const
 {
     QSettings s = store();
+    s.setValue("replay/auto", autoReplay);
+    s.setValue("replay/duration", clipDuration);
     s.setValue("tiktok/autoLoad", autoLoadTikTok);
     s.setValue("stream/rememberInfo", rememberStreamInfo);
     s.setValue("stream/confirmEnd", confirmBeforeEnd);
@@ -171,6 +179,34 @@ T0GSettingsDialog::T0GSettingsDialog(const T0GSettings &cfg, QWidget *parent) : 
             [this] { toggleSecret(liveTikTokKey, showLiveTikTokKey); });
     refreshLiveCredentials();
 
+    auto *replay = new QGroupBox("Replay Buffers & Clips", content);
+    auto *replayForm = new QFormLayout(replay);
+    autoReplay = new QCheckBox("Auto start/stop replay buffers when streams start/end", replay);
+    autoReplay->setChecked(cfg.autoReplay);
+    replayForm->addRow(autoReplay);
+    clipDuration = new QComboBox(replay);
+    for (int seconds : {15,30,60,120,300}) clipDuration->addItem(QString("%1 seconds").arg(seconds), seconds);
+    clipDuration->setCurrentIndex(clipDuration->findData(cfg.clipDuration));
+    replayForm->addRow("Clip duration (both layouts)", clipDuration);
+    QSettings replaySettings("T0G", "T0G Stream Control");
+    const QStringList labels = {"Start Replay Buffers", "Stop Replay Buffers", "Save Both Clips"};
+    for (int i = 0; i < 3; ++i) {
+        clipKeys[i] = new QKeySequenceEdit(QKeySequence(replaySettings.value(QString("replay/shortcut%1").arg(i)).toString()), replay);
+        clipKeys[i]->setMaximumSequenceLength(1);
+        replayForm->addRow(labels[i], clipKeys[i]);
+    }
+    auto *replayStatus = new QLabel(replay);
+    auto *replayTimer = new QTimer(replay);
+    connect(replayTimer, &QTimer::timeout, replay, [replayStatus] {
+        if (auto *controller = ReplayController::instance()) replayStatus->setText(controller->status());
+    });
+    replayTimer->start(500);
+    replayForm->addRow("Status", replayStatus);
+    auto *replayNote = new QLabel("Click a shortcut and press your key combination. You can also assign these actions in OBS Settings > Hotkeys. Clips use OBS and Aitum's existing save folders. Duration changes apply to new footage; a newly started buffer may have less footage available.", replay);
+    replayNote->setWordWrap(true);
+    replayForm->addRow(replayNote);
+    layout->addWidget(replay);
+
     auto *general = new QGroupBox("General", content);
     auto *generalLayout = new QVBoxLayout(general);
     autoLoadTikTok = new QCheckBox("Automatically restore saved Streamlabs API token when OBS starts", general);
@@ -265,7 +301,12 @@ T0GSettingsDialog::T0GSettingsDialog(const T0GSettings &cfg, QWidget *parent) : 
     dialogLayout->addWidget(scrollArea);
 
     auto *buttons = new QDialogButtonBox(QDialogButtonBox::Save | QDialogButtonBox::Cancel, this);
-    connect(buttons, &QDialogButtonBox::accepted, this, [this] { saveSecrets(); accept(); });
+    connect(buttons, &QDialogButtonBox::accepted, this, [this] { saveSecrets();
+        if (auto *controller = ReplayController::instance())
+            for (int i = 0; i < 3; ++i)
+                if (clipKeys[i]->keySequence().toString() != QSettings("T0G", "T0G Stream Control").value(QString("replay/shortcut%1").arg(i)).toString())
+                    controller->applyHotkey(i, clipKeys[i]->keySequence().toString());
+        accept(); });
     connect(buttons, &QDialogButtonBox::rejected, this, &QDialog::reject);
     dialogLayout->addWidget(buttons);
 }
@@ -330,6 +371,8 @@ void T0GSettingsDialog::clearTikTokKey()
 T0GSettings T0GSettingsDialog::settings() const
 {
     T0GSettings out;
+    out.autoReplay = autoReplay->isChecked();
+    out.clipDuration = clipDuration->currentData().toInt();
     out.autoLoadTikTok = autoLoadTikTok->isChecked();
     out.rememberStreamInfo = rememberStreamInfo->isChecked();
     out.confirmBeforeEnd = confirmBeforeEnd->isChecked();

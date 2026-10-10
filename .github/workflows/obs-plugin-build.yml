@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - test
       - feature/t0g-obs-stream-control
       - feature/t0g-chat-merger
   pull_request:

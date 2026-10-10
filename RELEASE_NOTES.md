@@ -1,20 +1,16 @@
-# T0G Stream Control — Chat Merger Update
+# Replay clips test update
 
 ## Added
-
-- Choose a separate text color for each Twitch and TikTok chat/event type, alongside its card background color. Text colors are saved for future OBS sessions and apply to new cards.
-- Twitch follower events in the Chat Merger. Reconnect your Twitch account after updating to grant follower access.
-- Local Test buttons for Twitch and TikTok event types so you can preview cards without going live.
-- Chat text size controls (8–32 px) and card duration controls (5–600 seconds, with a 60-second default).
+- Replay Buffers & Clips section in the main T0G settings.
+- Shared clip duration choices: 15, 30, 60, 120 and 300 seconds.
+- Start Replay Buffers, Stop Replay Buffers and Save Both Clips shortcuts, with click-and-press assignment and OBS hotkey registration.
+- One Auto start/stop toggle, enabled by default, following actual stream activity.
+- Landscape and vertical buffer status and warnings when a buffer cannot save.
 
 ## Improved
-
-- Twitch messages display role badge labels and native Twitch emote images, with Unicode emoji support retained.
-- Twitch activity cards use more specific event labels for new subs, resubs, gifted subs, Bits/Cheers, and raids.
-- Chat previews and incoming cards respect saved event visibility settings.
+- Replay controls reuse OBS and compatible Aitum Vertical buffers and their existing clip folders.
+- Replay preferences and shortcuts persist between OBS sessions and plugin updates.
+- Test branch builds produce a separate downloadable installer artifact.
 
 ## Fixed
-
-- Corrected Qt 6 compatibility issues in the updated chat renderer so the Windows plugin builds with Unicode text and automatic message sizing.
-
-Close OBS, run **T0G-Stream-Control-Setup.exe**, then reopen OBS. Display changes apply to newly received cards.
+- No separate bug fixes in this test update.
