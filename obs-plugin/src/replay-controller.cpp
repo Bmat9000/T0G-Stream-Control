@@ -210,7 +210,7 @@ void ReplayController::applyHotkey(int action, const QString &sequence)
         const int key = combination.key();
         QString obsName;
         if (key >= Qt::Key_F1 && key <= Qt::Key_F35) obsName = QString("OBS_KEY_F%1").arg(key - Qt::Key_F1 + 1);
-        else if ((key >= Qt::Key_A && key <= Qt::Key_Z) || (key >= Qt::Key_0 && key <= Qt::Key_9)) obsName = "OBS_KEY_" + QChar(key);
+        else if ((key >= Qt::Key_A && key <= Qt::Key_Z) || (key >= Qt::Key_0 && key <= Qt::Key_9)) obsName = QStringLiteral("OBS_KEY_") + QChar(key);
         else if (key == Qt::Key_Space) obsName = "OBS_KEY_SPACE";
         else if (key == Qt::Key_Insert) obsName = "OBS_KEY_INSERT";
         else if (key == Qt::Key_Delete) obsName = "OBS_KEY_DELETE";

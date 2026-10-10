@@ -18,7 +18,7 @@ permissions:
 
 concurrency:
   group: t0g-obs-plugin-${{ github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
   windows:
