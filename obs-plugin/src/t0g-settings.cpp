@@ -133,6 +133,13 @@ T0GSettingsDialog::T0GSettingsDialog(const T0GSettings &cfg, QWidget *parent) : 
     ttForm->addRow("RTMP server", tiktokServer);
     ttForm->addRow("Stream key", tiktokKey);
     ttForm->addRow("", clearTikTok);
+    auto *tiktokInfoNote = new QLabel(
+        "Changing TikTok's title, game/category and audience setting through T0G requires "
+        "Automatic / Streamlabs mode and a connected Streamlabs account. "
+        "Manual RTMP only sends your stream using the server and key; it does not update "
+        "these details. Set them where you created your TikTok LIVE before streaming.", tt);
+    tiktokInfoNote->setWordWrap(true);
+    ttForm->addRow(tiktokInfoNote);
     accountsLayout->addWidget(tt);
     layout->addWidget(accounts);
 
