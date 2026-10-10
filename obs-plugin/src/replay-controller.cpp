@@ -103,11 +103,17 @@ void ReplayController::start()
     if (!config) return;
     const char *mode = config_get_string(config, "Output", "Mode");
     const bool advanced = mode && std::strcmp(mode, "Advanced") == 0;
-    config_set_bool(config, advanced ? "AdvOut" : "SimpleOutput", "RecRB", true);
     config_set_uint(config, advanced ? "AdvOut" : "SimpleOutput", "RecRBTime", T0GSettings::load().clipDuration);
     config_set_uint(config, advanced ? "AdvOut" : "SimpleOutput", "RecRBSize", 0);
     config_save_safe(config, "tmp", nullptr);
-    if (!obs_frontend_replay_buffer_active()) obs_frontend_replay_buffer_start();
+    auto *mainOutput = obs_frontend_get_replay_buffer_output();
+    if (mainOutput) {
+        obs_output_release(mainOutput);
+        if (!obs_frontend_replay_buffer_active()) obs_frontend_replay_buffer_start();
+    } else {
+        QMessageBox::warning(static_cast<QWidget *>(obs_frontend_get_main_window()), "T0G Replay Buffers",
+            "Enable Replay Buffer in OBS Settings > Output, apply the change, then use Start Replay Buffers. Vertical can still run if Aitum has its own recording settings.");
+    }
     if (auto *dock = verticalDock()) {
         auto *output = verticalOutput();
         const bool active = output && obs_output_active(output);
@@ -184,7 +190,7 @@ void ReplayController::poll()
     // Covers TikTok-only and manual RTMP sessions without treating recording
     // or replay outputs as a live stream.
     obs_enum_outputs([](void *data, obs_output_t *output) {
-        if ((obs_output_get_flags(output) & OBS_OUTPUT_SERVICE) && obs_output_active(output))
+        if ((obs_output_get_flags(output) & OBS_OUTPUT_SERVICE) && obs_output_active(output) && obs_output_get_total_frames(output) > 0)
             *static_cast<bool *>(data) = true;
         return true;
     }, &live);

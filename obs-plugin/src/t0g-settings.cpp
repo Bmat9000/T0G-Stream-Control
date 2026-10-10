@@ -195,6 +195,19 @@ T0GSettingsDialog::T0GSettingsDialog(const T0GSettings &cfg, QWidget *parent) : 
         clipKeys[i]->setMaximumSequenceLength(1);
         replayForm->addRow(labels[i], clipKeys[i]);
     }
+    auto *controls = new QWidget(replay);
+    auto *controlsLayout = new QHBoxLayout(controls);
+    controlsLayout->setContentsMargins(0,0,0,0);
+    for (int i = 0; i < 3; ++i) {
+        auto *button = new QPushButton(labels[i], controls);
+        controlsLayout->addWidget(button);
+        connect(button, &QPushButton::clicked, this, [i] {
+            if (auto *controller = ReplayController::instance()) {
+                if (i == 0) controller->start(); else if (i == 1) controller->stop(); else controller->save();
+            }
+        });
+    }
+    replayForm->addRow(controls);
     auto *replayStatus = new QLabel(replay);
     auto *replayTimer = new QTimer(replay);
     connect(replayTimer, &QTimer::timeout, replay, [replayStatus] {
@@ -202,7 +215,7 @@ T0GSettingsDialog::T0GSettingsDialog(const T0GSettings &cfg, QWidget *parent) : 
     });
     replayTimer->start(500);
     replayForm->addRow("Status", replayStatus);
-    auto *replayNote = new QLabel("Click a shortcut and press your key combination. You can also assign these actions in OBS Settings > Hotkeys. Clips use OBS and Aitum's existing save folders. Duration changes apply to new footage; a newly started buffer may have less footage available.", replay);
+    auto *replayNote = new QLabel("Click a shortcut and press your key combination. You can also assign these actions in OBS Settings > Hotkeys. Enable Replay Buffer in OBS Settings > Output first. Clips use OBS and Aitum's existing save folders. Save settings before testing a new duration. Duration changes apply to new footage; a newly started buffer may have less footage available.", replay);
     replayNote->setWordWrap(true);
     replayForm->addRow(replayNote);
     layout->addWidget(replay);
