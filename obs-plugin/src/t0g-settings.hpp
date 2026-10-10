@@ -2,6 +2,7 @@
 #include <QDialog>
 #include <QString>
 
+class QKeySequenceEdit;
 class QCheckBox;
 class QComboBox;
 class QLineEdit;
@@ -10,6 +11,8 @@ class QLabel;
 class TwitchService;
 
 struct T0GSettings {
+    bool autoReplay = true;
+    int clipDuration = 60;
     bool autoLoadTikTok = true;
     bool rememberStreamInfo = true;
     bool confirmBeforeEnd = true;
@@ -47,6 +50,9 @@ private:
     void copyField(QLineEdit *field);
     void toggleSecret(QLineEdit *field, QPushButton *button);
 
+    QCheckBox *autoReplay{};
+    QComboBox *clipDuration{};
+    QKeySequenceEdit *clipKeys[3]{};
     QCheckBox *autoLoadTikTok{};
     QCheckBox *rememberStreamInfo{};
     QCheckBox *confirmBeforeEnd{};

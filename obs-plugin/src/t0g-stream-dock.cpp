@@ -146,7 +146,7 @@ T0GStreamDock::T0GStreamDock(QWidget *parent) : QDockWidget("T0G Stream Control"
     layout->addWidget(platforms);
 
     updateButton = new QPushButton("UPDATE TITLE / GAME", root);
-    updateButton->setToolTip("TikTok uses these fields when T0G creates the LIVE session. Twitch metadata API wiring is the next milestone.");
+    updateButton->setToolTip("TikTok applies these fields when creating a LIVE through Automatic / Streamlabs. Manual TikTok RTMP does not update stream details. Connected Twitch accounts can update their title/game.");
 
     auto *buttons = new QHBoxLayout;
     goLiveButton = new QPushButton(QString::fromUtf8("●  GO LIVE"), root);
@@ -189,7 +189,12 @@ T0GStreamDock::T0GStreamDock(QWidget *parent) : QDockWidget("T0G Stream Control"
     connect(updateButton, &QPushButton::clicked, this, [this] {
         if (!twitchEnabled->isChecked() || settings.twitchConnectionMode == 1) {
             QMessageBox::information(this, "T0G Stream Control",
-                                     "TikTok will apply the title/game when its LIVE session is created.");
+                                     settings.tiktokConnectionMode == 1
+                                         ? "Manual TikTok RTMP does not update the title, game/category or audience setting. "
+                                           "Set these details where you created your TikTok LIVE, or switch to "
+                                           "Automatic / Streamlabs and connect Streamlabs to apply them when T0G creates the LIVE."
+                                         : "TikTok applies the title, game/category and audience setting when T0G creates "
+                                           "the LIVE through the Streamlabs connection.");
             return;
         }
         twitch.updateChannel(titleEdit->text().trimmed(), gameEdit->text().trimmed(),

@@ -334,3 +334,23 @@ When reporting a problem, include the relevant OBS log/error information but rem
 Update [RELEASE_NOTES.md](RELEASE_NOTES.md) whenever we ship changes, in the same commit as the code being shipped. Replace the current update notes with user-friendly descriptions under **Added**, **Improved**, and **Fixed**. Inspect the actual changes and include only completed changes included in that installer. Do not include roadmap items or unverified fixes; use “None” for a section with no applicable changes.
 
 The Windows OBS plugin workflow checks out the exact triggering commit for both source and notes. After building and checking the installer, it adds the Actions build number/attempt, UTC publication date, and commit link to those notes and publishes them as the rolling GitHub release description. Main builds are serialized to avoid overlapping publication. The T0G Labs Discord bot reads this release description automatically; no separate Discord notes are required.
+
+## Replay clips (test branch)
+
+In T0G **Settings → Replay Buffers & Clips**, choose 15, 30, 60, 120 or 300 seconds and click a shortcut field to press your key combination. Start Replay Buffers, Stop Replay Buffers and Save Both Clips are also registered in **OBS Settings → Hotkeys**. The single **Auto start/stop** toggle defaults to on: buffers start after a stream becomes active and stop after the last active stream ends. Opening OBS alone does not start them. Disable the toggle for manual control.
+
+Clips save to the folders configured in OBS and Aitum Vertical. Both buffers need time to collect the selected duration; clip boundaries follow encoder keyframes. Changing duration takes effect on the next buffer start and does not discard an already-running buffer. Settings and shortcuts persist across restarts and installer updates.
+
+Enable **Replay Buffer** in OBS Settings → Output and apply it before starting a stream. Enable replay/backtrack support in Aitum and disable its independent always-on/automatic replay options if you want T0G to control the lifecycle. T0G uses Aitum's Qt replay methods and the OBS portrait replay output; unsupported Aitum versions show Vertical as unavailable. The first compatible Aitum canvas is used; multiple vertical canvases are not supported by this test integration. A newly started vertical buffer is briefly restarted to apply the shared duration because OBS reads its retention limit only when the output starts. Landscape clipping remains available without Aitum. Missing buffers produce a warning on Save Both Clips; completed saves are reported by OBS/Aitum.
+
+### Test checklist
+
+- Launch OBS without streaming: buffers stay off when Aitum's independent automation is disabled.
+- Assign three shortcuts in T0G settings; test them with focus outside the settings dialog.
+- Start Twitch only, TikTok only, and both; confirm buffers run. Ending one of two streams keeps buffers running; ending the last stops them.
+- Disable Auto start/stop; verify stream transitions leave manually controlled buffers alone.
+- For each duration, start fresh buffers, wait for enough footage, save and inspect both files.
+- Restart OBS and reinstall the test build; confirm preferences and shortcuts remain.
+- Disable Aitum; verify landscape saves and a clear vertical warning.
+
+Test branch installers are downloadable from the successful **Build T0G OBS Plugin** Actions run's **T0G-Stream-Control-Windows** artifact. They do not replace the main release.

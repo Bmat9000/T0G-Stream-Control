@@ -5,6 +5,7 @@
 #include <windows.h>
 #include <cstdio>
 #include "t0g-stream-dock.hpp"
+#include "replay-controller.hpp"
 #include "chat-merger-dock.hpp"
 #include "chat-feed.hpp"
 #include "twitch-chat-service.hpp"
@@ -14,6 +15,7 @@
 OBS_DECLARE_MODULE()
 OBS_MODULE_USE_DEFAULT_LOCALE("t0g-stream-control", "en-US")
 
+static ReplayController *g_replay = nullptr;
 static T0GStreamDock *g_dock = nullptr;
 static ChatMergerDock *g_chatDock = nullptr;
 static ChatFeed *g_chatFeed = nullptr;
@@ -116,6 +118,7 @@ MODULE_EXPORT bool obs_module_load(void)
         g_goLive = obs_hotkey_register_frontend("t0g_go_live", "T0G: Go Live Selected Platforms", go_live_hotkey, nullptr);
         g_endLive = obs_hotkey_register_frontend("t0g_end_live", "T0G: End Selected Platforms", end_live_hotkey, nullptr);
 
+        g_replay = new ReplayController(mainWindow);
         debug_log("Plugin load completed successfully");
         return true;
     } catch (const std::exception &e) {
@@ -130,6 +133,8 @@ MODULE_EXPORT bool obs_module_load(void)
 MODULE_EXPORT void obs_module_unload(void)
 {
     debug_log("obs_module_unload entered");
+    delete g_replay;
+    g_replay = nullptr;
     g_dock = nullptr;
     g_chatDock = nullptr;
     g_chatFeed = nullptr;
