@@ -8,6 +8,7 @@
 - Landscape and vertical buffer status and warnings when a buffer cannot save.
 
 ## Improved
+- TikTok connection settings and the Update Title / Game action explain that changing TikTok stream details requires Automatic / Streamlabs; manual RTMP only sends the stream.
 - Replay controls reuse OBS and compatible Aitum Vertical buffers and their existing clip folders.
 - Replay preferences and shortcuts persist between OBS sessions and plugin updates.
 - Test branch builds produce a separate downloadable installer artifact.
