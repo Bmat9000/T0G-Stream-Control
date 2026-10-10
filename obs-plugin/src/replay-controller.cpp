@@ -17,17 +17,11 @@ namespace {
 ReplayController *controller = nullptr;
 obs_output_t *verticalOutput()
 {
-    obs_output_t *found = nullptr;
-    obs_enum_outputs([](void *data, obs_output_t *output) {
-        if (std::strcmp(obs_output_get_id(output), "replay_buffer") != 0) return true;
-        auto *encoder = obs_output_get_video_encoder(output);
-        if (encoder && obs_encoder_get_height(encoder) > obs_encoder_get_width(encoder)) {
-            *static_cast<obs_output_t **>(data) = obs_output_get_ref(output);
-            return false;
-        }
-        return true;
-    }, &found);
-    return found;
+    auto *module = obs_get_module("vertical-canvas");
+    if (!module) return nullptr;
+    const QString name = QString::fromUtf8(obs_module_get_locale_text(module, "Vertical")) +
+        QStringLiteral(" ") + QString::fromUtf8(obs_module_get_locale_text(module, "Backtrack"));
+    return obs_get_output_by_name(name.toUtf8().constData());
 }
 void duration(obs_output_t *output)
 {
