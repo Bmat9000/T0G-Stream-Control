@@ -15,5 +15,6 @@
 - Test branch builds produce a separate downloadable installer artifact.
 
 ## Fixed
+- Twitch device login begins checking authorization immediately while activation instructions are visible; failures and expired codes now report an error instead of retrying indefinitely.
 - Repeated Go Live requests skip platforms that are already live or have a TikTok session, preventing active TikTok output reconfiguration and duplicate LIVE creation.
 - Stream Control and Chat Merger now appear in the OBS Docks menu, so either panel can be reopened after closing it.

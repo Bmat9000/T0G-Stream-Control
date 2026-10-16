@@ -288,9 +288,13 @@ T0GSettingsDialog::T0GSettingsDialog(const T0GSettings &cfg, QWidget *parent) : 
     twitchService = new TwitchService(this);
     twitchService->setClientId(cfg.twitchClientId);
     connect(twitchService, &TwitchService::activationRequired, this, [this](const QString &url, const QString &code) {
-        QMessageBox::information(this, "Connect Twitch",
+        auto *instructions = new QMessageBox(QMessageBox::Information, "Connect Twitch",
             "Your browser has been opened.\n\nEnter this Twitch activation code if requested:\n\n" + code +
-            "\n\nActivation page: " + url);
+            "\n\nActivation page: " + url + "\n\nKeep T0G Settings open until your account connects.",
+            QMessageBox::Ok, this);
+        instructions->setAttribute(Qt::WA_DeleteOnClose);
+        instructions->setModal(false);
+        instructions->show();
     });
     twitchService->restore([this](bool ok, QString name) {
         twitchAccountStatus->setText(ok ? ("Connected as " + name) : "Not connected");
@@ -301,13 +305,17 @@ T0GSettingsDialog::T0GSettingsDialog(const T0GSettings &cfg, QWidget *parent) : 
     });
     connect(connectTwitch, &QPushButton::clicked, this, [this] {
         twitchService->setClientId(QString::fromUtf8(kT0GTwitchClientId));
+        connectTwitch->setEnabled(false);
+        twitchAccountStatus->setText("Waiting for Twitch authorization...");
         twitchService->connectDevice([this](bool ok, QString msg) {
+            connectTwitch->setEnabled(true);
             twitchAccountStatus->setText(ok ? ("Connected as " + msg) : "Not connected");
             if (!ok) QMessageBox::warning(this, "Twitch Login", msg);
         });
     });
     connect(disconnectTwitch, &QPushButton::clicked, this, [this] {
         twitchService->disconnectAccount();
+        connectTwitch->setEnabled(true);
         twitchAccountStatus->setText("Not connected");
     });
     connect(twitchMode, &QComboBox::currentIndexChanged, this, [this] { updateAccountFields(); });
