@@ -45,7 +45,7 @@ QWidget *viewerTile(const QString &name,QLabel **value,QWidget *parent)
 }
 }
 
-ChatMergerDock::ChatMergerDock(QWidget *parent) : QDockWidget("T0G Chat Merger", parent)
+ChatMergerDock::ChatMergerDock(QWidget *parent) : QWidget(parent)
 {
     setObjectName("T0GChatMergerDock");
     setMinimumWidth(360);
@@ -88,7 +88,9 @@ ChatMergerDock::ChatMergerDock(QWidget *parent) : QDockWidget("T0G Chat Merger",
     empty->setObjectName("emptyChatLabel"); empty->setAlignment(Qt::AlignCenter); empty->setWordWrap(true);
     empty->setStyleSheet("color:#747d8e;padding:24px;");
     feedLayout->insertWidget(0,empty);
-    setWidget(root); refreshHeader(); refreshViewers();
+    auto *dockLayout = new QVBoxLayout(this);
+    dockLayout->setContentsMargins(0, 0, 0, 0);
+    dockLayout->addWidget(root); refreshHeader(); refreshViewers();
 }
 
 void ChatMergerDock::refreshHeader()

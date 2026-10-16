@@ -105,14 +105,18 @@ MODULE_EXPORT bool obs_module_load(void)
         QSettings chatSettings("T0G","T0G Chat Merger");
         const QString testTikTok=chatSettings.value("tiktok/testUsername").toString().trimmed();
         if(!testTikTok.isEmpty()) g_tiktokChat->start(testTikTok);
-        mainWindow->addDockWidget(Qt::RightDockWidgetArea, g_chatDock);
-        g_chatDock->show();
-        debug_log("T0G Chat Merger dock added and shown");
-
-        debug_log("Adding dock to OBS");
-        mainWindow->addDockWidget(Qt::RightDockWidgetArea, g_dock);
-        g_dock->show();
-        debug_log("Dock added and shown");
+        // OBS owns the dock wrappers and supplies persistent Docks-menu toggles.
+        // Keep the existing object names as IDs so saved layouts still match.
+        if (!obs_frontend_add_dock_by_id("T0GChatMergerDock", "T0G Chat Merger", g_chatDock)) {
+            debug_log("ERROR: Could not register T0G Chat Merger dock");
+            return false;
+        }
+        if (!obs_frontend_add_dock_by_id("T0GStreamControlDock", "T0G Stream Control", g_dock)) {
+            obs_frontend_remove_dock("T0GChatMergerDock");
+            debug_log("ERROR: Could not register T0G Stream Control dock");
+            return false;
+        }
+        debug_log("Both docks registered with OBS Docks-menu toggles");
 
         debug_log("Registering frontend hotkeys");
         g_goLive = obs_hotkey_register_frontend("t0g_go_live", "T0G: Go Live Selected Platforms", go_live_hotkey, nullptr);

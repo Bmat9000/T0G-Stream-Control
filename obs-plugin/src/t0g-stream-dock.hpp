@@ -1,5 +1,5 @@
 #pragma once
-#include <QDockWidget>
+#include <QWidget>
 #include <QString>
 #include "tiktok-service.hpp"
 #include "tiktok-output.hpp"
@@ -16,7 +16,7 @@ class QPushButton;
 class QListWidget;
 class QTimer;
 
-class T0GStreamDock final : public QDockWidget {
+class T0GStreamDock final : public QWidget {
     Q_OBJECT
 public:
     explicit T0GStreamDock(QWidget *parent = nullptr);

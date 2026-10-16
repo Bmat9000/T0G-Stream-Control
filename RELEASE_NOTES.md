@@ -14,4 +14,4 @@
 - Test branch builds produce a separate downloadable installer artifact.
 
 ## Fixed
-- No separate bug fixes in this test update.
+- Stream Control and Chat Merger now appear in the OBS Docks menu, so either panel can be reopened after closing it.

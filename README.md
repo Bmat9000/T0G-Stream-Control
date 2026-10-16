@@ -161,7 +161,7 @@ If Windows SmartScreen displays **Windows protected your PC**, verify that you d
 3. Confirm/select your OBS Studio installation directory.
 4. Complete the installation.
 5. Start OBS Studio.
-6. Open the **T0G Stream Control** dock from OBS if it is not already visible.
+6. In OBS, open **Docks → T0G Stream Control** and **Docks → T0G Chat Merger**. If you close either panel with its X button, reopen it from this menu.
 
 OBS is normally installed under `Program Files`, which is why administrator permission may be required.
 

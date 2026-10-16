@@ -44,7 +44,7 @@ void showStreamlabsTokenHelp(QWidget *parent)
 }
 }
 
-T0GStreamDock::T0GStreamDock(QWidget *parent) : QDockWidget("T0G Stream Control", parent)
+T0GStreamDock::T0GStreamDock(QWidget *parent) : QWidget(parent)
 {
     setObjectName("T0GStreamControlDock");
     setMinimumWidth(380);
@@ -259,7 +259,9 @@ T0GStreamDock::T0GStreamDock(QWidget *parent) : QDockWidget("T0G Stream Control"
 
     T0GLog::write("Dock initialized; Aitum Vertical detected=" + QString(aitumVertical.available() ? "true" : "false"));
     updateReadyState();
-    setWidget(root);
+    auto *dockLayout = new QVBoxLayout(this);
+    dockLayout->setContentsMargins(0, 0, 0, 0);
+    dockLayout->addWidget(root);
 
 }
 
