@@ -542,7 +542,17 @@ void T0GStreamDock::startSelectedPlatforms()
     if (busy)
         return;
 
-    const auto preflight = PreflightCheck::run(settings, twitchEnabled->isChecked(), tiktokEnabled->isChecked(),
+    const bool startTwitch = twitchEnabled->isChecked() && settings.startTwitch &&
+        !obs_frontend_streaming_active() && !manualTwitchOutput.active();
+    const bool startTikTokNow = tiktokEnabled->isChecked() && settings.startTikTok &&
+        activeTikTokStreamId.isEmpty() && !tiktokOutput.active() &&
+        !manualTikTokOutput.active() && !aitumVertical.active();
+    if (!startTwitch && !startTikTokNow) {
+        T0GLog::write("GO LIVE ignored: selected platforms already have an active stream/session");
+        return;
+    }
+
+    const auto preflight = PreflightCheck::run(settings, startTwitch, startTikTokNow,
                                                titleEdit->text(), tiktok.hasToken(), aitumVertical.available());
     if (!preflight.ok) {
         QMessageBox::warning(this, "Stream Pre-flight Failed",
@@ -557,17 +567,16 @@ void T0GStreamDock::startSelectedPlatforms()
     // Aitum auto-starts enabled outputs when OBS streaming begins, so starting
     // Twitch first can launch T0G TikTok once with yesterday's/stale key.
     const bool deferTwitchForTikTok =
-        twitchEnabled->isChecked() && settings.startTwitch &&
-        tiktokEnabled->isChecked() && settings.startTikTok;
+        startTwitch && startTikTokNow;
 
-    if (twitchEnabled->isChecked() && settings.startTwitch && !deferTwitchForTikTok) {
+    if (startTwitch && !deferTwitchForTikTok) {
         if (!startTwitchAfterTikTok()) {
             setBusy(false);
             return;
         }
     }
 
-    if (tiktokEnabled->isChecked() && settings.startTikTok) {
+    if (startTikTokNow) {
         if (settings.tiktokConnectionMode == 1) {
             if (!startManualTikTok()) {
                 setBusy(false);
@@ -615,6 +624,7 @@ bool T0GStreamDock::startTwitchAfterTikTok()
 
 bool T0GStreamDock::startManualTwitch()
 {
+    if (manualTwitchOutput.active()) return true;
     const QString key = CredentialStore::read("TwitchManualKey");
     QString error;
     if (settings.twitchManualServer.isEmpty() || key.isEmpty()) {

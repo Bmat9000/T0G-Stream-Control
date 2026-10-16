@@ -2,6 +2,7 @@
 #include <obs-frontend-api.h>
 #include <QMainWindow>
 #include <QSettings>
+#include <QMetaObject>
 #include <windows.h>
 #include <cstdio>
 #include "t0g-stream-dock.hpp"
@@ -37,12 +38,14 @@ static void debug_log(const char *message)
 
 static void go_live_hotkey(void*, obs_hotkey_id, obs_hotkey_t*, bool pressed)
 {
-    if (pressed && g_dock) g_dock->triggerGoLive();
+    if (pressed && g_dock)
+        QMetaObject::invokeMethod(g_dock, [] { if (g_dock) g_dock->triggerGoLive(); }, Qt::QueuedConnection);
 }
 
 static void end_live_hotkey(void*, obs_hotkey_id, obs_hotkey_t*, bool pressed)
 {
-    if (pressed && g_dock) g_dock->triggerEndLive();
+    if (pressed && g_dock)
+        QMetaObject::invokeMethod(g_dock, [] { if (g_dock) g_dock->triggerEndLive(); }, Qt::QueuedConnection);
 }
 
 MODULE_EXPORT const char *obs_module_description(void)
