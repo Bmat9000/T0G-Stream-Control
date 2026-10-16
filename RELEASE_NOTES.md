@@ -1,6 +1,7 @@
 # Replay clips test update
 
 ## Added
+- Reconnect Chat button in Chat Merger to manually reconnect Twitch chat/events and TikTok chat without restarting OBS or the streams.
 - Replay Buffers & Clips section in the main T0G settings.
 - Shared clip duration choices: 15, 30, 60, 120 and 300 seconds.
 - Start Replay Buffers, Stop Replay Buffers and Save Both Clips shortcuts, with click-and-press assignment and OBS hotkey registration.

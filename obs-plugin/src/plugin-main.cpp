@@ -96,6 +96,18 @@ MODULE_EXPORT bool obs_module_load(void)
                              const QString target=username.trimmed().isEmpty()?g_dock->tiktokChatUsername():username.trimmed();
                              if(!target.isEmpty()) g_tiktokChat->start(target);
                          });
+        QObject::connect(g_chatDock, &ChatMergerDock::reconnectRequested, g_chatDock, [] {
+            debug_log("Chat Merger: manual reconnect requested");
+            g_twitchChat->stop();
+            g_twitchEvents->stop();
+            g_tiktokChat->stop();
+            g_twitchChat->start(g_dock->twitchChatLogin());
+            const QString twitchId = g_dock->twitchAccountId();
+            if (!twitchId.isEmpty()) g_twitchEvents->start(twitchId);
+            QSettings settings("T0G", "T0G Chat Merger");
+            const QString test = settings.value("tiktok/testUsername").toString().trimmed();
+            g_tiktokChat->start(test.isEmpty() ? g_dock->tiktokChatUsername() : test);
+        });
         const QString existingTwitchLogin = g_dock->twitchChatLogin();
         if (!existingTwitchLogin.isEmpty())
             g_twitchChat->start(existingTwitchLogin);

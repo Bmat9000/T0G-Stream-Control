@@ -69,6 +69,18 @@ ChatMergerDock::ChatMergerDock(QWidget *parent) : QWidget(parent)
 
     status=new QLabel(root); status->setStyleSheet("font-size:10px;color:#b8c0ce;");
     rootLayout->addWidget(status);
+    auto *reconnect = new QPushButton("Reconnect Chat", root);
+    reconnect->setToolTip("Reconnect Twitch chat/events and TikTok chat using your current accounts or saved TikTok test username. Does not restart your streams.");
+    rootLayout->addWidget(reconnect);
+    connect(reconnect, &QPushButton::clicked, this, [this, reconnect] {
+        reconnect->setEnabled(false);
+        setTwitchViewers(-1);
+        tiktokViewers = -1;
+        refreshViewers();
+        emit reconnectRequested();
+        QTimer::singleShot(3000, reconnect, [reconnect] { reconnect->setEnabled(true); });
+    });
+
 
     auto *viewerRow=new QHBoxLayout; viewerRow->setSpacing(6);
     viewerRow->addWidget(viewerTile("TWITCH",&twitchViewerValue,root));

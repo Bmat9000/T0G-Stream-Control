@@ -10,6 +10,7 @@ class ChatMergerDock final : public QWidget {
 public:
     explicit ChatMergerDock(QWidget *parent=nullptr);
 signals:
+    void reconnectRequested();
     void tikTokTestUsernameChanged(QString username);
 public slots:
     void addMessage(ChatMessage message);
