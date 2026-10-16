@@ -2,9 +2,11 @@
 #include <obs-frontend-api.h>
 #include <QMainWindow>
 #include <QSettings>
+#include <QMetaObject>
 #include <windows.h>
 #include <cstdio>
 #include "t0g-stream-dock.hpp"
+#include "replay-controller.hpp"
 #include "chat-merger-dock.hpp"
 #include "chat-feed.hpp"
 #include "twitch-chat-service.hpp"
@@ -14,6 +16,7 @@
 OBS_DECLARE_MODULE()
 OBS_MODULE_USE_DEFAULT_LOCALE("t0g-stream-control", "en-US")
 
+static ReplayController *g_replay = nullptr;
 static T0GStreamDock *g_dock = nullptr;
 static ChatMergerDock *g_chatDock = nullptr;
 static ChatFeed *g_chatFeed = nullptr;
@@ -35,12 +38,14 @@ static void debug_log(const char *message)
 
 static void go_live_hotkey(void*, obs_hotkey_id, obs_hotkey_t*, bool pressed)
 {
-    if (pressed && g_dock) g_dock->triggerGoLive();
+    if (pressed && g_dock)
+        QMetaObject::invokeMethod(g_dock, [] { if (g_dock) g_dock->triggerGoLive(); }, Qt::QueuedConnection);
 }
 
 static void end_live_hotkey(void*, obs_hotkey_id, obs_hotkey_t*, bool pressed)
 {
-    if (pressed && g_dock) g_dock->triggerEndLive();
+    if (pressed && g_dock)
+        QMetaObject::invokeMethod(g_dock, [] { if (g_dock) g_dock->triggerEndLive(); }, Qt::QueuedConnection);
 }
 
 MODULE_EXPORT const char *obs_module_description(void)
@@ -94,6 +99,18 @@ MODULE_EXPORT bool obs_module_load(void)
                              const QString target=username.trimmed().isEmpty()?g_dock->tiktokChatUsername():username.trimmed();
                              if(!target.isEmpty()) g_tiktokChat->start(target);
                          });
+        QObject::connect(g_chatDock, &ChatMergerDock::reconnectRequested, g_chatDock, [] {
+            debug_log("Chat Merger: manual reconnect requested");
+            g_twitchChat->stop();
+            g_twitchEvents->stop();
+            g_tiktokChat->stop();
+            g_twitchChat->start(g_dock->twitchChatLogin());
+            const QString twitchId = g_dock->twitchAccountId();
+            if (!twitchId.isEmpty()) g_twitchEvents->start(twitchId);
+            QSettings settings("T0G", "T0G Chat Merger");
+            const QString test = settings.value("tiktok/testUsername").toString().trimmed();
+            g_tiktokChat->start(test.isEmpty() ? g_dock->tiktokChatUsername() : test);
+        });
         const QString existingTwitchLogin = g_dock->twitchChatLogin();
         if (!existingTwitchLogin.isEmpty())
             g_twitchChat->start(existingTwitchLogin);
@@ -103,19 +120,24 @@ MODULE_EXPORT bool obs_module_load(void)
         QSettings chatSettings("T0G","T0G Chat Merger");
         const QString testTikTok=chatSettings.value("tiktok/testUsername").toString().trimmed();
         if(!testTikTok.isEmpty()) g_tiktokChat->start(testTikTok);
-        mainWindow->addDockWidget(Qt::RightDockWidgetArea, g_chatDock);
-        g_chatDock->show();
-        debug_log("T0G Chat Merger dock added and shown");
-
-        debug_log("Adding dock to OBS");
-        mainWindow->addDockWidget(Qt::RightDockWidgetArea, g_dock);
-        g_dock->show();
-        debug_log("Dock added and shown");
+        // OBS owns the dock wrappers and supplies persistent Docks-menu toggles.
+        // Keep the existing object names as IDs so saved layouts still match.
+        if (!obs_frontend_add_dock_by_id("T0GChatMergerDock", "T0G Chat Merger", g_chatDock)) {
+            debug_log("ERROR: Could not register T0G Chat Merger dock");
+            return false;
+        }
+        if (!obs_frontend_add_dock_by_id("T0GStreamControlDock", "T0G Stream Control", g_dock)) {
+            obs_frontend_remove_dock("T0GChatMergerDock");
+            debug_log("ERROR: Could not register T0G Stream Control dock");
+            return false;
+        }
+        debug_log("Both docks registered with OBS Docks-menu toggles");
 
         debug_log("Registering frontend hotkeys");
         g_goLive = obs_hotkey_register_frontend("t0g_go_live", "T0G: Go Live Selected Platforms", go_live_hotkey, nullptr);
         g_endLive = obs_hotkey_register_frontend("t0g_end_live", "T0G: End Selected Platforms", end_live_hotkey, nullptr);
 
+        g_replay = new ReplayController(mainWindow);
         debug_log("Plugin load completed successfully");
         return true;
     } catch (const std::exception &e) {
@@ -130,6 +152,8 @@ MODULE_EXPORT bool obs_module_load(void)
 MODULE_EXPORT void obs_module_unload(void)
 {
     debug_log("obs_module_unload entered");
+    delete g_replay;
+    g_replay = nullptr;
     g_dock = nullptr;
     g_chatDock = nullptr;
     g_chatFeed = nullptr;

@@ -59,6 +59,10 @@ bool AitumVertical::available() const
 
 bool AitumVertical::configureTikTok(const QString &server, const QString &key, QString *error)
 {
+    if (active()) {
+        if (error) *error = "TikTok output is already active. End the current stream before changing its connection.";
+        return false;
+    }
     T0GLog::write("Aitum: synchronizing configured T0G TikTok entry with this LIVE (stream key hidden)");
 
     // Do NOT require get_stream_output() here. Vertical Canvas can have a
@@ -155,6 +159,7 @@ bool AitumVertical::callOutputCommand(const char *procedure, QString *error) con
 
 bool AitumVertical::startTikTok(QString *error)
 {
+    if (active()) return true;
     T0GLog::write("Aitum: requesting Vertical Canvas to start T0G TikTok");
     const bool called = callOutputCommand("aitum_vertical_start_stream_output", error);
     obs_output_t *output = getOutput(outputName());

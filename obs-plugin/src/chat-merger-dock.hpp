@@ -1,15 +1,16 @@
 #pragma once
-#include <QDockWidget>
+#include <QWidget>
 #include <QHash>
 #include "chat-message.hpp"
 
 class QVBoxLayout; class QLabel; class QScrollArea; class QWidget; class QTimer;
 
-class ChatMergerDock final : public QDockWidget {
+class ChatMergerDock final : public QWidget {
     Q_OBJECT
 public:
     explicit ChatMergerDock(QWidget *parent=nullptr);
 signals:
+    void reconnectRequested();
     void tikTokTestUsernameChanged(QString username);
 public slots:
     void addMessage(ChatMessage message);

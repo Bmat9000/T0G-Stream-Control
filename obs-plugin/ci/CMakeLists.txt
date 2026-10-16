@@ -28,6 +28,8 @@ target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE
 )
 
 target_sources(${CMAKE_PROJECT_NAME} PRIVATE
+  src/replay-controller.cpp
+  src/replay-controller.hpp
   src/plugin-main.cpp
   src/twitch-service.cpp
   src/twitch-service.hpp

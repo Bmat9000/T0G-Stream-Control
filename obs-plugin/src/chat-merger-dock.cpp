@@ -45,7 +45,7 @@ QWidget *viewerTile(const QString &name,QLabel **value,QWidget *parent)
 }
 }
 
-ChatMergerDock::ChatMergerDock(QWidget *parent) : QDockWidget("T0G Chat Merger", parent)
+ChatMergerDock::ChatMergerDock(QWidget *parent) : QWidget(parent)
 {
     setObjectName("T0GChatMergerDock");
     setMinimumWidth(360);
@@ -69,6 +69,18 @@ ChatMergerDock::ChatMergerDock(QWidget *parent) : QDockWidget("T0G Chat Merger",
 
     status=new QLabel(root); status->setStyleSheet("font-size:10px;color:#b8c0ce;");
     rootLayout->addWidget(status);
+    auto *reconnect = new QPushButton("Reconnect Chat", root);
+    reconnect->setToolTip("Reconnect Twitch chat/events and TikTok chat using your current accounts or saved TikTok test username. Does not restart your streams.");
+    rootLayout->addWidget(reconnect);
+    connect(reconnect, &QPushButton::clicked, this, [this, reconnect] {
+        reconnect->setEnabled(false);
+        setTwitchViewers(-1);
+        tiktokViewers = -1;
+        refreshViewers();
+        emit reconnectRequested();
+        QTimer::singleShot(3000, reconnect, [reconnect] { reconnect->setEnabled(true); });
+    });
+
 
     auto *viewerRow=new QHBoxLayout; viewerRow->setSpacing(6);
     viewerRow->addWidget(viewerTile("TWITCH",&twitchViewerValue,root));
@@ -88,7 +100,9 @@ ChatMergerDock::ChatMergerDock(QWidget *parent) : QDockWidget("T0G Chat Merger",
     empty->setObjectName("emptyChatLabel"); empty->setAlignment(Qt::AlignCenter); empty->setWordWrap(true);
     empty->setStyleSheet("color:#747d8e;padding:24px;");
     feedLayout->insertWidget(0,empty);
-    setWidget(root); refreshHeader(); refreshViewers();
+    auto *dockLayout = new QVBoxLayout(this);
+    dockLayout->setContentsMargins(0, 0, 0, 0);
+    dockLayout->addWidget(root); refreshHeader(); refreshViewers();
 }
 
 void ChatMergerDock::refreshHeader()

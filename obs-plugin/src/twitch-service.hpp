@@ -1,6 +1,7 @@
 #pragma once
 #include <QObject>
 #include <QString>
+#include <QElapsedTimer>
 #include <functional>
 
 class QNetworkAccessManager;
@@ -42,5 +43,9 @@ private:
     QString userName;
     QString userLogin;
     int pollInterval = 5;
+    int deviceExpiresIn = 600;
+    QElapsedTimer deviceStarted;
+    bool pollInFlight = false;
+    unsigned loginGeneration = 0;
     Result pendingConnect;
 };

@@ -44,7 +44,7 @@ void showStreamlabsTokenHelp(QWidget *parent)
 }
 }
 
-T0GStreamDock::T0GStreamDock(QWidget *parent) : QDockWidget("T0G Stream Control", parent)
+T0GStreamDock::T0GStreamDock(QWidget *parent) : QWidget(parent)
 {
     setObjectName("T0GStreamControlDock");
     setMinimumWidth(380);
@@ -146,7 +146,7 @@ T0GStreamDock::T0GStreamDock(QWidget *parent) : QDockWidget("T0G Stream Control"
     layout->addWidget(platforms);
 
     updateButton = new QPushButton("UPDATE TITLE / GAME", root);
-    updateButton->setToolTip("TikTok uses these fields when T0G creates the LIVE session. Twitch metadata API wiring is the next milestone.");
+    updateButton->setToolTip("TikTok applies these fields when creating a LIVE through Automatic / Streamlabs. Manual TikTok RTMP does not update stream details. Connected Twitch accounts can update their title/game.");
 
     auto *buttons = new QHBoxLayout;
     goLiveButton = new QPushButton(QString::fromUtf8("●  GO LIVE"), root);
@@ -189,7 +189,12 @@ T0GStreamDock::T0GStreamDock(QWidget *parent) : QDockWidget("T0G Stream Control"
     connect(updateButton, &QPushButton::clicked, this, [this] {
         if (!twitchEnabled->isChecked() || settings.twitchConnectionMode == 1) {
             QMessageBox::information(this, "T0G Stream Control",
-                                     "TikTok will apply the title/game when its LIVE session is created.");
+                                     settings.tiktokConnectionMode == 1
+                                         ? "Manual TikTok RTMP does not update the title, game/category or audience setting. "
+                                           "Set these details where you created your TikTok LIVE, or switch to "
+                                           "Automatic / Streamlabs and connect Streamlabs to apply them when T0G creates the LIVE."
+                                         : "TikTok applies the title, game/category and audience setting when T0G creates "
+                                           "the LIVE through the Streamlabs connection.");
             return;
         }
         twitch.updateChannel(titleEdit->text().trimmed(), gameEdit->text().trimmed(),
@@ -254,7 +259,9 @@ T0GStreamDock::T0GStreamDock(QWidget *parent) : QDockWidget("T0G Stream Control"
 
     T0GLog::write("Dock initialized; Aitum Vertical detected=" + QString(aitumVertical.available() ? "true" : "false"));
     updateReadyState();
-    setWidget(root);
+    auto *dockLayout = new QVBoxLayout(this);
+    dockLayout->setContentsMargins(0, 0, 0, 0);
+    dockLayout->addWidget(root);
 
 }
 
@@ -535,7 +542,17 @@ void T0GStreamDock::startSelectedPlatforms()
     if (busy)
         return;
 
-    const auto preflight = PreflightCheck::run(settings, twitchEnabled->isChecked(), tiktokEnabled->isChecked(),
+    const bool startTwitch = twitchEnabled->isChecked() && settings.startTwitch &&
+        !obs_frontend_streaming_active() && !manualTwitchOutput.active();
+    const bool startTikTokNow = tiktokEnabled->isChecked() && settings.startTikTok &&
+        activeTikTokStreamId.isEmpty() && !tiktokOutput.active() &&
+        !manualTikTokOutput.active() && !aitumVertical.active();
+    if (!startTwitch && !startTikTokNow) {
+        T0GLog::write("GO LIVE ignored: selected platforms already have an active stream/session");
+        return;
+    }
+
+    const auto preflight = PreflightCheck::run(settings, startTwitch, startTikTokNow,
                                                titleEdit->text(), tiktok.hasToken(), aitumVertical.available());
     if (!preflight.ok) {
         QMessageBox::warning(this, "Stream Pre-flight Failed",
@@ -550,17 +567,16 @@ void T0GStreamDock::startSelectedPlatforms()
     // Aitum auto-starts enabled outputs when OBS streaming begins, so starting
     // Twitch first can launch T0G TikTok once with yesterday's/stale key.
     const bool deferTwitchForTikTok =
-        twitchEnabled->isChecked() && settings.startTwitch &&
-        tiktokEnabled->isChecked() && settings.startTikTok;
+        startTwitch && startTikTokNow;
 
-    if (twitchEnabled->isChecked() && settings.startTwitch && !deferTwitchForTikTok) {
+    if (startTwitch && !deferTwitchForTikTok) {
         if (!startTwitchAfterTikTok()) {
             setBusy(false);
             return;
         }
     }
 
-    if (tiktokEnabled->isChecked() && settings.startTikTok) {
+    if (startTikTokNow) {
         if (settings.tiktokConnectionMode == 1) {
             if (!startManualTikTok()) {
                 setBusy(false);
@@ -608,6 +624,7 @@ bool T0GStreamDock::startTwitchAfterTikTok()
 
 bool T0GStreamDock::startManualTwitch()
 {
+    if (manualTwitchOutput.active()) return true;
     const QString key = CredentialStore::read("TwitchManualKey");
     QString error;
     if (settings.twitchManualServer.isEmpty() || key.isEmpty()) {

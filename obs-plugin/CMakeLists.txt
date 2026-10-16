@@ -10,6 +10,8 @@ find_package(obs-frontend-api REQUIRED)
 find_package(Qt6 REQUIRED COMPONENTS Core Widgets Network)
 
 add_library(t0g-stream-control MODULE
+  src/replay-controller.cpp
+  src/replay-controller.hpp
   src/plugin-main.cpp
   src/twitch-service.cpp
   src/twitch-service.hpp
