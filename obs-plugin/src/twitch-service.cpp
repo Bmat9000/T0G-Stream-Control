@@ -28,7 +28,8 @@ void TwitchService::persistTokens(const QString&a,const QString&r){QString e;Cre
 void TwitchService::disconnectAccount(){++loginGeneration;deviceCode.clear();pendingConnect={};pollInFlight=false;pollTimer->stop();CredentialStore::remove("TwitchOAuthAccess");CredentialStore::remove("TwitchOAuthRefresh");userId.clear();userName.clear();userLogin.clear();emit accountChanged();}
 
 void TwitchService::restore(Result done){
-    if(client.isEmpty()||accessToken().isEmpty()){if(done)done(false,"Not connected");return;} fetchIdentity(done);
+    if(client.isEmpty()){if(done)done(false,"Not connected");return;}
+    if(accessToken().isEmpty()){refreshLogin(done);return;} fetchIdentity(done);
 }
 namespace {
 QString twitchFailure(QNetworkReply *reply, const QJsonObject &body)
@@ -121,9 +122,49 @@ void TwitchService::pollDevice(){
         });
     });
 }
-void TwitchService::fetchIdentity(Result done){
+void TwitchService::refreshLogin(Result done)
+{
+    const QString savedRefresh = refreshToken();
+    if (savedRefresh.isEmpty()) { if(done) done(false,"Connect Twitch in Settings to authorize this account."); return; }
+    const unsigned attempt = loginGeneration;
+    QNetworkRequest req(QUrl("https://id.twitch.tv/oauth2/token"));
+    req.setTransferTimeout(15000);
+    req.setHeader(QNetworkRequest::ContentTypeHeader,"application/x-www-form-urlencoded");
+    QUrlQuery q;
+    q.addQueryItem("client_id",client);
+    q.addQueryItem("grant_type","refresh_token");
+    q.addQueryItem("refresh_token",savedRefresh);
+    auto *reply = net->post(req,q.query(QUrl::FullyEncoded).toUtf8());
+    connect(reply,&QNetworkReply::finished,this,[this,reply,done,attempt] {
+        const auto body = QJsonDocument::fromJson(reply->readAll()).object();
+        reply->deleteLater();
+        if (attempt != loginGeneration) return;
+        const QString access = body.value("access_token").toString();
+        if (reply->error() != QNetworkReply::NoError || access.isEmpty()) {
+            // Keep saved credentials on temporary network/service failures.
+            if(done) done(false,"Could not renew Twitch login. Check your connection; if access was revoked, connect Twitch again.");
+            return;
+        }
+        QString error;
+        const QString refresh = body.value("refresh_token").toString();
+        // Save a rotated refresh token first so it survives an interrupted write.
+        if ((!refresh.isEmpty() && !CredentialStore::write("TwitchOAuthRefresh",refresh,&error)) ||
+            !CredentialStore::write("TwitchOAuthAccess",access,&error)) {
+            if(done) done(false,"Windows could not save the renewed Twitch login.");
+            return;
+        }
+        fetchIdentity(done,false);
+    });
+}
+void TwitchService::fetchIdentity(Result done, bool allowRefresh){
+    const unsigned attempt = loginGeneration;
     QNetworkRequest req(QUrl("https://api.twitch.tv/helix/users"));req.setTransferTimeout(15000);req.setRawHeader("Client-Id",client.toUtf8());req.setRawHeader("Authorization",("Bearer "+accessToken()).toUtf8());
-    auto*r=net->get(req);connect(r,&QNetworkReply::finished,this,[this,r,done]{auto a=QJsonDocument::fromJson(r->readAll()).object().value("data").toArray();r->deleteLater();
+    auto*r=net->get(req);connect(r,&QNetworkReply::finished,this,[this,r,done,allowRefresh,attempt]{
+        if (attempt != loginGeneration) { r->deleteLater(); return; }
+        if (allowRefresh && r->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt() == 401) {
+            r->deleteLater(); refreshLogin(done); return;
+        }
+        auto a=QJsonDocument::fromJson(r->readAll()).object().value("data").toArray();r->deleteLater();
         if(a.isEmpty()){T0GLog::write("Twitch login identity lookup failed", LOG_WARNING);if(done)done(false,"Twitch authorization finished, but account validation failed. Check your connection and reconnect Twitch.");return;}auto o=a.first().toObject();userId=o.value("id").toString();userName=o.value("display_name").toString();userLogin=o.value("login").toString();emit accountChanged();if(done)done(true,userName);});
 }
 void TwitchService::searchCategory(const QString&game,std::function<void(bool,QString,QString)> done){

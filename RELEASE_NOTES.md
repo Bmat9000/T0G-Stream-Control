@@ -1,20 +1,13 @@
-# Replay clips test update
+# Clip shortcuts and Twitch login persistence
 
 ## Added
-- Reconnect Chat button in Chat Merger to manually reconnect Twitch chat/events and TikTok chat without restarting OBS or the streams.
-- Replay Buffers & Clips section in the main T0G settings.
-- Shared clip duration choices: 15, 30, 60, 120 and 300 seconds.
-- Start Replay Buffers, Stop Replay Buffers and Save Both Clips shortcuts, with click-and-press assignment and OBS hotkey registration.
-- One Auto start/stop toggle, enabled by default, following actual stream activity.
-- Landscape and vertical buffer status and warnings when a buffer cannot save.
+- Automatic renewal of saved Twitch device-login credentials when account validation reports an expired access token.
 
 ## Improved
-- TikTok connection settings and the Update Title / Game action explain that changing TikTok stream details requires Automatic / Streamlabs; manual RTMP only sends the stream.
-- Replay controls reuse OBS and compatible Aitum Vertical buffers and their existing clip folders.
-- Replay preferences and shortcuts persist between OBS sessions and plugin updates.
-- Test branch builds produce a separate downloadable installer artifact.
+- Replay hotkey changes made through OBS Settings are saved promptly instead of relying on plugin unload.
+- Renewed Twitch credentials remain in Windows Credential Manager across OBS restarts and plugin updates.
 
 ## Fixed
-- Twitch device login begins checking authorization immediately while activation instructions are visible; failures and expired codes now report an error instead of retrying indefinitely.
-- Repeated Go Live requests skip platforms that are already live or have a TikTok session, preventing active TikTok output reconfiguration and duplicate LIVE creation.
-- Stream Control and Chat Merger now appear in the OBS Docks menu, so either panel can be reopened after closing it.
+- Plugin shutdown no longer overwrites saved clip bindings after OBS begins clearing hotkeys.
+- Clip shortcuts assigned in T0G Settings are flushed to storage immediately.
+- Temporary Twitch renewal failures preserve saved credentials for another attempt.

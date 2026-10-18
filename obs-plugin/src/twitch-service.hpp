@@ -29,7 +29,8 @@ signals:
 
 private:
     void pollDevice();
-    void fetchIdentity(Result done);
+    void fetchIdentity(Result done, bool allowRefresh = true);
+    void refreshLogin(Result done);
     void searchCategory(const QString &game, std::function<void(bool,QString,QString)> done);
     void persistTokens(const QString &access, const QString &refresh);
     QString accessToken() const;

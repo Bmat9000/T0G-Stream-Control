@@ -50,6 +50,8 @@ ReplayController::ReplayController(QObject *parent) : QObject(parent)
             obs_data_release(data);
         }
     }
+    signal_handler_connect(obs_get_signal_handler(), "hotkey_bindings_changed", bindingsChanged, this);
+    obs_frontend_add_event_callback(frontendEvent, this);
     timer = new QTimer(this);
     connect(timer, &QTimer::timeout, this, [this] { poll(); });
     timer->start(500);
@@ -57,16 +59,39 @@ ReplayController::ReplayController(QObject *parent) : QObject(parent)
 ReplayController::~ReplayController()
 {
     timer->stop();
+    signal_handler_disconnect(obs_get_signal_handler(), "hotkey_bindings_changed", bindingsChanged, this);
+    obs_frontend_remove_event_callback(frontendEvent, this);
+    // OBS may have already cleared bindings by module unload.
+    for (int i = 0; i < 3; ++i) obs_hotkey_unregister(keys[i]);
+    controller = nullptr;
+}
+void ReplayController::saveHotkeys()
+{
+    if (shuttingDown) return;
     QSettings settings("T0G", "T0G Stream Control");
     for (int i = 0; i < 3; ++i) {
         auto *bindings = obs_hotkey_save(keys[i]);
         auto *data = obs_data_create();
         obs_data_set_array(data, "bindings", bindings);
         settings.setValue(QString("replay/hotkey%1").arg(i), QByteArray(obs_data_get_json(data)));
-        obs_data_array_release(bindings); obs_data_release(data);
-        obs_hotkey_unregister(keys[i]);
+        obs_data_array_release(bindings);
+        obs_data_release(data);
     }
-    controller = nullptr;
+    settings.sync();
+}
+void ReplayController::bindingsChanged(void *data, calldata_t *)
+{
+    auto *self = static_cast<ReplayController *>(data);
+    // The OBS signal can arrive while its hotkey lock is held.
+    QMetaObject::invokeMethod(self, [self] { self->saveHotkeys(); }, Qt::QueuedConnection);
+}
+void ReplayController::frontendEvent(enum obs_frontend_event event, void *data)
+{
+    auto *self = static_cast<ReplayController *>(data);
+    if (event == OBS_FRONTEND_EVENT_EXIT) {
+        self->saveHotkeys();
+        self->shuttingDown = true;
+    }
 }
 QObject *ReplayController::verticalDock() const
 {
@@ -229,5 +254,6 @@ void ReplayController::applyHotkey(int action, const QString &sequence)
     QSettings settings("T0G", "T0G Stream Control");
     settings.setValue(QString("replay/hotkey%1").arg(action), QByteArray(obs_data_get_json(data)));
     settings.setValue(QString("replay/shortcut%1").arg(action), sequence);
+    settings.sync();
     obs_data_release(data); obs_data_array_release(bindings);
 }
