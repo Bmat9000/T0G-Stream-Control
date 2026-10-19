@@ -1,6 +1,7 @@
 # Clip shortcuts and Twitch login persistence
 
 ## Added
+- Release output is saved to notepad.txt and opens in Notepad on failure, including setup errors.
 - Local Windows build and release command: `release-nexus.cmd`, with installer output, release notes, and a troubleshooting log.
 - Automatic renewal of saved Twitch device-login credentials when account validation reports an expired access token.
 

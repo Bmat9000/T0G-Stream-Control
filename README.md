@@ -366,7 +366,7 @@ git pull --ff-only
 .\release-nexus.cmd
 ```
 
-This builds on your PC, then uploads the installer and official notes to GitHub Releases. It does not use GitHub Actions minutes. Outputs are in `dist/<build>/`. Use `.\release-nexus.cmd -BuildOnly` to build without uploading. Public releases require clean, current main. Keep RELEASE_NOTES.md updated before releasing. A failed command stops publication; the printed temporary folder contains release.log for troubleshooting. The first build downloads OBS dependencies and compiles the Rust TikTok runtime, so allow extra time and disk space. Do not run two releases at once.
+This builds on your PC, then uploads the installer and official notes to GitHub Releases. It does not use GitHub Actions minutes. Outputs are in `dist/<build>/`. Use `.\release-nexus.cmd -BuildOnly` to build without uploading. Public releases require clean, current main. Keep RELEASE_NOTES.md updated before releasing. Each run saves full output to `notepad.txt` in the repository folder. If the release fails, the log opens automatically in Notepad, including missing-tool errors. Send that file for troubleshooting. The next run replaces it; temporary build logs remain available too. The first build downloads OBS dependencies and compiles the Rust TikTok runtime, so allow extra time and disk space. Do not run two releases at once.
 
 ### One-time setup
 
@@ -378,7 +378,7 @@ winget install --id GitHub.cli -e
 winget install --id Microsoft.PowerShell -e
 winget install --id Kitware.CMake -e --version 3.31.8
 winget install --id Rustlang.Rustup -e
-winget install --id JRSoftware.InnoSetup -e --version 6.4.3
+winget install --id JRSoftware.InnoSetup -e
 winget install --id Microsoft.VisualStudio.2022.BuildTools -e --override "--wait --passive --add Microsoft.VisualStudio.Workload.VCTools --includeRecommended"
 gh auth login
 rustup default stable-x86_64-pc-windows-msvc

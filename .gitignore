@@ -14,3 +14,5 @@ StreamLabsTikTokStreamKeyGeneratorCLI.py
 *.pem
 downloaded_files/*
 _version.py
+
+/notepad.txt

@@ -8,6 +8,7 @@ $source = Split-Path $PSScriptRoot -Parent
 $repoRoot = $source
 Set-Location $source
 function Run([string]$Program, [string[]]$Arguments) {
+    Write-Host "STEP: $Program $($Arguments -join ' ')"
     & $Program @Arguments
     if ($LASTEXITCODE -ne 0) { throw "$Program failed with exit code $LASTEXITCODE" }
 }
