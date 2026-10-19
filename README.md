@@ -333,9 +333,9 @@ When reporting a problem, include the relevant OBS log/error information but rem
 
 Update [RELEASE_NOTES.md](RELEASE_NOTES.md) whenever we ship changes, in the same commit as the code being shipped. Replace the current update notes with user-friendly descriptions under **Added**, **Improved**, and **Fixed**. Inspect the actual changes and include only completed changes included in that installer. Do not include roadmap items or unverified fixes; use “None” for a section with no applicable changes.
 
-The Windows OBS plugin workflow checks out the exact triggering commit for both source and notes. After building and checking the installer, it adds the Actions build number/attempt, UTC publication date, and commit link to those notes and publishes them as the rolling GitHub release description. Main builds are serialized to avoid overlapping publication. The T0G Labs Discord bot reads this release description automatically; no separate Discord notes are required.
+The local Windows release command builds the checked-out commit, validates the DLL and Windows loader, and publishes the installer with the UTC build number, date, commit, and notes. The stable download URL stays the same and the Discord bot continues reading its release description. GitHub Actions builds now run only when manually dispatched.
 
-## Replay clips (test branch)
+## Replay clips
 
 In T0G **Settings → Replay Buffers & Clips**, choose 15, 30, 60, 120 or 300 seconds and click a shortcut field to press your key combination. Start Replay Buffers, Stop Replay Buffers and Save Both Clips are also registered in **OBS Settings → Hotkeys**. The single **Auto start/stop** toggle defaults to on: buffers start after a stream becomes active and stop after the last active stream ends. Opening OBS alone does not start them. Disable the toggle for manual control.
 
@@ -353,4 +353,35 @@ Enable **Replay Buffer** in OBS Settings → Output and apply it before starting
 - Restart OBS and reinstall the test build; confirm preferences and shortcuts remain.
 - Disable Aitum; verify landscape saves and a clear vertical warning.
 
-Test branch installers are downloadable from the successful **Build T0G OBS Plugin** Actions run's **T0G-Stream-Control-Windows** artifact. They do not replace the main release.
+Use `.\release-nexus.cmd -BuildOnly` to create a local installer without publishing.
+
+## Local Windows releases
+
+Run from your **T0G-Stream-Control** folder (the command name matches Nexus):
+
+```powershell
+gh auth setup-git
+git switch main
+git pull --ff-only
+.\release-nexus.cmd
+```
+
+This builds on your PC, then uploads the installer and official notes to GitHub Releases. It does not use GitHub Actions minutes. Outputs are in `dist/<build>/`. Use `.\release-nexus.cmd -BuildOnly` to build without uploading. Public releases require clean, current main. Keep RELEASE_NOTES.md updated before releasing. A failed command stops publication; the printed temporary folder contains release.log for troubleshooting. The first build downloads OBS dependencies and compiles the Rust TikTok runtime, so allow extra time and disk space. Do not run two releases at once.
+
+### One-time setup
+
+Install Git, GitHub CLI, PowerShell 7.2+, CMake 3.30+ (below 4), Rust stable with the x64 MSVC toolchain, Inno Setup 6, and **Visual Studio 2022 Build Tools with Desktop development with C++ and a Windows SDK**. Open a fresh terminal after installing.
+
+```powershell
+winget install --id Git.Git -e
+winget install --id GitHub.cli -e
+winget install --id Microsoft.PowerShell -e
+winget install --id Kitware.CMake -e --version 3.31.8
+winget install --id Rustlang.Rustup -e
+winget install --id JRSoftware.InnoSetup -e --version 6.4.3
+winget install --id Microsoft.VisualStudio.2022.BuildTools -e --override "--wait --passive --add Microsoft.VisualStudio.Workload.VCTools --includeRecommended"
+gh auth login
+rustup default stable-x86_64-pc-windows-msvc
+```
+
+OBS plugin template and TikTok runtime revisions are pinned in `scripts/release-stream-control.ps1`. The build uses the same OBS CMake preset, DLL export checks, Windows loader test, TLS backends, and installer payload as the existing Windows workflow. The legacy Python release workflow remains manual.

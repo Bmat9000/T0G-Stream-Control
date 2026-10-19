@@ -1,9 +1,11 @@
 # Clip shortcuts and Twitch login persistence
 
 ## Added
+- Local Windows build and release command: `release-nexus.cmd`, with installer output, release notes, and a troubleshooting log.
 - Automatic renewal of saved Twitch device-login credentials when account validation reports an expired access token.
 
 ## Improved
+- Automatic GitHub Actions builds are disabled; build and publish from your Windows PC instead.
 - Replay hotkey changes made through OBS Settings are saved promptly instead of relying on plugin unload.
 - Renewed Twitch credentials remain in Windows Credential Manager across OBS restarts and plugin updates.
 
