@@ -5,6 +5,13 @@ $ErrorActionPreference = 'Stop'
 $repoRoot = Split-Path $PSScriptRoot -Parent
 $log = Join-Path $repoRoot 'notepad.txt'
 $code = 1
+function Write-ReleaseLog {
+    process {
+        $line = [string]$_
+        Add-Content -Path $log -Value $line -Encoding UTF8
+        Write-Host $line
+    }
+}
 try {
     "T0G STREAM CONTROL RELEASE`r`nTime: $([DateTime]::UtcNow.ToString('o'))`r`n" |
         Set-Content -Encoding UTF8 $log
@@ -18,16 +25,16 @@ try {
     # without aborting before the child process returns its real exit status.
     $ErrorActionPreference = 'Continue'
     & $pwsh.Source @releaseArgs 2>&1 | ForEach-Object { $_.ToString() } |
-        Tee-Object -FilePath $log -Append
+        Write-ReleaseLog
     $code = $LASTEXITCODE
     $ErrorActionPreference = 'Stop'
 } catch {
-    "RELEASE FAILED: $($_.Exception.Message)" | Tee-Object -FilePath $log -Append
+    "RELEASE FAILED: $($_.Exception.Message)" | Write-ReleaseLog
     $code = 1
 }
 if ($code -ne 0) {
     "`r`nRELEASE FAILED (exit $code). Send this notepad.txt file for troubleshooting." |
-        Tee-Object -FilePath $log -Append
+        Write-ReleaseLog
     try { Start-Process notepad.exe -ArgumentList ('"' + $log + '"') } catch { Write-Host "Open log: $log" }
 } else {
     Write-Host "Release log saved: $log"

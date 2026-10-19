@@ -131,11 +131,17 @@ public static class T0GNativeLoader {
     public static extern IntPtr LoadLibraryEx(string lpFileName, IntPtr hFile, uint dwFlags);
     [DllImport("kernel32.dll", SetLastError=true)]
     public static extern bool FreeLibrary(IntPtr hModule);
+    [DllImport("kernel32.dll", SetLastError=true, CharSet=CharSet.Unicode)]
+    public static extern IntPtr AddDllDirectory(string NewDirectory);
 }
 '@
 Add-Type $native
-$obsDll = Get-ChildItem -Path . -Recurse -Filter "obs.dll" -ErrorAction SilentlyContinue | Select-Object -First 1
-$frontendDll = Get-ChildItem -Path . -Recurse -Filter "obs-frontend-api.dll" -ErrorAction SilentlyContinue | Select-Object -First 1
+$obsDll = Get-ChildItem -Path . -Recurse -Filter "obs.dll" -ErrorAction SilentlyContinue |
+    Where-Object { $_.FullName -notmatch '[\\/]Debug[\\/]' } |
+    Sort-Object @{Expression={ if ($_.FullName -match '[\\/]rundir[\\/]Release[\\/]') { 0 } else { 1 } }} |
+    Select-Object -First 1
+$frontendDll = Get-ChildItem -Path . -Recurse -Filter "obs-frontend-api.dll" -ErrorAction SilentlyContinue |
+    Where-Object { $_.FullName -notmatch '[\\/]Debug[\\/]' } | Select-Object -First 1
 if (-not $obsDll) { throw "obs.dll could not be located in the build workspace." }
 if (-not $frontendDll) { throw "obs-frontend-api.dll could not be located in the build workspace." }
 
@@ -145,6 +151,7 @@ $runtimeDirs = @($obsDll.DirectoryName, $frontendDll.DirectoryName) | Select-Obj
 # other transitive DLLs used by obs.dll). Add every dependency bin folder,
 # not just the directory containing Qt6Core.dll.
 $dependencyBinDirs = Get-ChildItem -Path ".deps" -Recurse -Filter "*.dll" -ErrorAction SilentlyContinue |
+  Where-Object { $_.FullName -notmatch '[\\/]Debug[\\/]' } |
   ForEach-Object { $_.DirectoryName } |
   Select-Object -Unique
 $runtimeDirs = @($runtimeDirs) + @($dependencyBinDirs)
@@ -152,14 +159,24 @@ $runtimeDirs = @($runtimeDirs | Where-Object { $_ } | Select-Object -Unique)
 
 foreach ($dir in $runtimeDirs) {
   Write-Host "Adding runtime DLL directory: $dir"
+  if ([T0GNativeLoader]::AddDllDirectory($dir) -eq [IntPtr]::Zero) {
+      throw "Could not register runtime DLL directory: $dir"
+  }
 }
 $runtimePath = [string]::Join(';', [string[]]$runtimeDirs)
 $env:PATH = "$runtimePath;$env:PATH"
 
-# Use normal dependency resolution so PATH is honored for transitive
-# OBS/Qt dependencies. LOAD_WITH_ALTERED_SEARCH_PATH can bypass the
-# PATH setup above and produce a misleading error 126 in CI.
-$handle = [T0GNativeLoader]::LoadLibraryEx($dll.FullName, [IntPtr]::Zero, 0)
+# Explicit loader directories also work when PowerShell has enabled safe DLL
+# search mode, where modifying PATH alone is insufficient.
+foreach ($dependency in @($obsDll, $frontendDll)) {
+    Write-Host "Checking runtime dependency: $($dependency.FullName)"
+    $dependencyHandle = [T0GNativeLoader]::LoadLibraryEx($dependency.FullName, [IntPtr]::Zero, 0x1100)
+    if ($dependencyHandle -eq [IntPtr]::Zero) {
+        $code = [Runtime.InteropServices.Marshal]::GetLastWin32Error()
+        throw "Runtime dependency failed to load: $($dependency.FullName) (Win32 $code). Check its transitive DLLs in the build log."
+    }
+}
+$handle = [T0GNativeLoader]::LoadLibraryEx($dll.FullName, [IntPtr]::Zero, 0x1100)
 if ($handle -eq [IntPtr]::Zero) {
   $code = [Runtime.InteropServices.Marshal]::GetLastWin32Error()
   $message = (New-Object ComponentModel.Win32Exception($code)).Message
